@@ -1,0 +1,85 @@
+import { prisma } from "@/lib/prisma";
+import { scoreCategoryAnswers } from "@/domain/rules/scoring";
+import type { ScoringEntry } from "@/domain/rules/scoring";
+import * as gameRepo from "@/server/repositories/game.repository";
+import * as answerRepo from "@/server/repositories/answer.repository";
+import * as categoryRepo from "@/server/repositories/category.repository";
+import { assertRoundCanScore } from "@/server/rules/game-transitions";
+import { AppError } from "@/lib/errors";
+
+export async function scoreCurrentRound(roomCode: string, hostUserId: string) {
+  const room = await prisma.room.findUnique({
+    where: { code: roomCode.toUpperCase() },
+  });
+  if (!room) throw new AppError("NOT_FOUND", "اتاق پیدا نشد.");
+
+  if (room.hostId !== hostUserId) {
+    throw new AppError("FORBIDDEN", "فقط میزبان می‌تواند امتیازدهی کند.");
+  }
+
+  const game = await gameRepo.findLatestActiveGameForRoom(room.id);
+  if (!game) throw new AppError("NOT_FOUND", "بازی فعالی نیست.");
+
+  const round = await gameRepo.findLatestRoundForGame(game.id);
+  if (!round) throw new AppError("BAD_STATE", "دوری یافت نشد.");
+
+  if (round.status === "scored") {
+    return { alreadyScored: true as const, roundId: round.id };
+  }
+
+  assertRoundCanScore(round.status);
+
+  const categories = await categoryRepo.listActiveCategories();
+  const answers = await answerRepo.listAnswersForRound(round.id);
+
+  await prisma.$transaction(async (tx) => {
+    const playerScoresRows = await tx.playerScore.findMany({
+      where: { gameId: game.id },
+    });
+
+    for (const cat of categories) {
+      const catAnswers = answers.filter((a) => a.categoryId === cat.id);
+      const entries: ScoringEntry[] = playerScoresRows.map((ps) => {
+        const ans = catAnswers.find((a) => a.roomPlayerId === ps.roomPlayerId);
+        if (!ans) {
+          return {
+            roomPlayerId: ps.roomPlayerId,
+            normalized: "",
+            isValid: false,
+          };
+        }
+        return {
+          roomPlayerId: ans.roomPlayerId,
+          normalized: ans.normalizedValue,
+          isValid: ans.isValid,
+        };
+      });
+
+      const scoresMap = scoreCategoryAnswers(entries);
+
+      for (const ans of catAnswers) {
+        const s = scoresMap.get(ans.roomPlayerId) ?? 0;
+        await tx.roundAnswer.update({
+          where: { id: ans.id },
+          data: { score: s },
+        });
+      }
+
+      for (const ps of playerScoresRows) {
+        const add = scoresMap.get(ps.roomPlayerId) ?? 0;
+        if (add === 0) continue;
+        await tx.playerScore.update({
+          where: { id: ps.id },
+          data: { totalScore: { increment: add } },
+        });
+      }
+    }
+
+    await tx.round.update({
+      where: { id: round.id },
+      data: { status: "scored" },
+    });
+  });
+
+  return { alreadyScored: false as const, roundId: round.id };
+}

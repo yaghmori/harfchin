@@ -1,0 +1,141 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RoomStatus {
+  waiting
+  playing
+  finished
+}
+
+enum GameStatus {
+  pending
+  in_progress
+  review
+  finished
+}
+
+enum RoundStatus {
+  active
+  review
+  scored
+  finished
+}
+
+model User {
+  id          String       @id @default(cuid())
+  name        String?
+  email       String?      @unique
+  isGuest     Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  roomPlayers RoomPlayer[]
+  hostedRooms Room[]       @relation("RoomHost")
+}
+
+model Room {
+  id                String       @id @default(cuid())
+  code              String       @unique
+  hostId            String
+  host              User         @relation("RoomHost", fields: [hostId], references: [id])
+  status            RoomStatus   @default(waiting)
+  maxPlayers        Int          @default(8)
+  draftTotalRounds  Int          @default(5)
+  draftRoundTimeSec Int          @default(120)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  players           RoomPlayer[]
+  games             Game[]
+}
+
+model RoomPlayer {
+  id          String        @id @default(cuid())
+  roomId      String
+  room        Room          @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User          @relation(fields: [userId], references: [id])
+  displayName String
+  isHost      Boolean       @default(false)
+  isReady     Boolean       @default(false)
+  joinedAt    DateTime      @default(now())
+  answers     RoundAnswer[]
+  scores      PlayerScore[]
+
+  @@unique([roomId, userId])
+  @@index([roomId])
+}
+
+model Game {
+  id           String        @id @default(cuid())
+  roomId       String
+  room         Room          @relation(fields: [roomId], references: [id])
+  status       GameStatus    @default(pending)
+  currentRound Int           @default(0)
+  totalRounds  Int
+  roundTimeSec Int
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  rounds       Round[]
+  playerScores PlayerScore[]
+
+  @@index([roomId])
+}
+
+model Round {
+  id          String        @id @default(cuid())
+  gameId      String
+  game        Game          @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  roundNumber Int
+  letter      String
+  status      RoundStatus   @default(active)
+  startedAt   DateTime      @default(now())
+  endedAt     DateTime?
+  answers     RoundAnswer[]
+
+  @@unique([gameId, roundNumber])
+  @@index([gameId])
+}
+
+model Category {
+  id        String        @id @default(cuid())
+  key       String        @unique
+  title     String
+  sortOrder Int
+  isActive  Boolean       @default(true)
+  answers   RoundAnswer[]
+}
+
+model RoundAnswer {
+  id              String     @id @default(cuid())
+  roundId         String
+  round           Round      @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  roomPlayerId    String
+  roomPlayer      RoomPlayer @relation(fields: [roomPlayerId], references: [id])
+  categoryId      String
+  category        Category   @relation(fields: [categoryId], references: [id])
+  value           String
+  normalizedValue String
+  isValid         Boolean
+  score           Int        @default(0)
+  submittedAt     DateTime   @default(now())
+
+  @@unique([roundId, roomPlayerId, categoryId])
+  @@index([roundId])
+}
+
+model PlayerScore {
+  id           String     @id @default(cuid())
+  gameId       String
+  game         Game       @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  roomPlayerId String
+  roomPlayer   RoomPlayer @relation(fields: [roomPlayerId], references: [id])
+  totalScore   Int        @default(0)
+
+  @@unique([gameId, roomPlayerId])
+  @@index([gameId])
+}
