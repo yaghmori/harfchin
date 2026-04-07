@@ -6,6 +6,10 @@ import { useCallback, useEffect, useState } from "react";
 import { faDigits } from "@/lib/format";
 import { apiGet, apiPost } from "@/features/api/client";
 import { SiteShell } from "@/components/layout/SiteShell";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 
 type ResultsPayload = {
   meUserId: string;
@@ -67,10 +71,17 @@ export function ResultsClient({ gameId }: { gameId: string }) {
   if (error && !data) {
     return (
       <SiteShell>
-        <p className="text-red-600">{error}</p>
-        <Link href="/" className="mt-4 text-teal-700 underline">
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+        <Button
+          render={<Link href="/" />}
+          nativeButton={false}
+          variant="link"
+          className="mt-4 h-auto px-0 text-teal-700 dark:text-teal-300"
+        >
           خانه
-        </Link>
+        </Button>
       </SiteShell>
     );
   }
@@ -78,7 +89,7 @@ export function ResultsClient({ gameId }: { gameId: string }) {
   if (!data) {
     return (
       <SiteShell>
-        <p className="text-[var(--muted)]">در حال بارگذاری نتایج…</p>
+        <p className="text-muted-foreground">در حال بارگذاری نتایج…</p>
       </SiteShell>
     );
   }
@@ -88,52 +99,60 @@ export function ResultsClient({ gameId }: { gameId: string }) {
   return (
     <SiteShell>
       <h1 className="mb-2 text-2xl font-bold">نتایج نهایی</h1>
-      <p className="mb-6 text-sm text-[var(--muted)]">
+      <p className="mb-6 text-sm text-muted-foreground">
         بازی تمام شد. رتبه‌بندی بر اساس مجموع امتیاز دورهاست.
       </p>
 
-      <ol className="mb-8 space-y-2 rounded-2xl border border-slate-200 bg-[var(--card)] p-4 dark:border-slate-600">
-        {data.leaderboard.map((row, i) => (
-          <li
-            key={row.roomPlayerId}
-            className="flex items-center justify-between border-b border-slate-100 py-2 last:border-0 dark:border-slate-700"
-          >
-            <span>
-              <span className="ml-2 font-mono text-[var(--muted)]" dir="ltr">
-                {faDigits(i + 1)}
-              </span>
-              {row.displayName}
-            </span>
-            <span className="font-mono text-lg" dir="ltr">
-              {faDigits(row.totalScore)}
-            </span>
-          </li>
-        ))}
-      </ol>
+      <Card className="mb-8">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">جدول نهایی</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-0 pt-0">
+          {data.leaderboard.map((row, i) => (
+            <div key={row.roomPlayerId}>
+              {i > 0 ? <Separator className="my-2" /> : null}
+              <div className="flex items-center justify-between py-1 text-sm sm:text-base">
+                <span>
+                  <span className="ms-2 font-mono text-muted-foreground" dir="ltr">
+                    {faDigits(i + 1)}
+                  </span>
+                  {row.displayName}
+                </span>
+                <span className="font-mono text-lg" dir="ltr">
+                  {faDigits(row.totalScore)}
+                </span>
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
 
       <div className="flex flex-col gap-3 sm:flex-row">
-        <Link
-          href="/"
-          className="flex-1 rounded-xl border border-slate-200 py-3 text-center font-medium dark:border-slate-600"
+        <Button
+          variant="outline"
+          render={<Link href="/" />}
+          nativeButton={false}
+          className="h-10 flex-1"
         >
           خانه
-        </Link>
+        </Button>
         {isHost ? (
-          <button
+          <Button
             type="button"
             disabled={busy}
             onClick={() => void replay()}
-            className="flex-1 rounded-xl bg-teal-600 py-3 font-medium text-white disabled:opacity-50"
+            className="h-10 flex-1 bg-teal-600 text-white hover:bg-teal-700 dark:bg-teal-700 dark:hover:bg-teal-600"
           >
             بازی دوباره
-          </button>
+          </Button>
         ) : (
-          <Link
-            href={`/lobby/${data.roomCode}`}
-            className="flex-1 rounded-xl bg-teal-600 py-3 text-center font-medium text-white"
+          <Button
+            render={<Link href={`/lobby/${data.roomCode}`} />}
+            nativeButton={false}
+            className="h-10 flex-1 bg-teal-600 text-white hover:bg-teal-700 dark:bg-teal-700 dark:hover:bg-teal-600"
           >
             بازگشت به لابی
-          </Link>
+          </Button>
         )}
       </div>
     </SiteShell>

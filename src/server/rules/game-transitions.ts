@@ -1,4 +1,8 @@
-import type { GameStatus, RoomStatus, RoundStatus } from "@prisma/client";
+import type {
+  GameStatus,
+  RoomStatus,
+  RoundStatus,
+} from "@/generated/prisma/client";
 import { AppError } from "@/lib/errors";
 
 export function assertRoomCanStartGame(status: RoomStatus): void {

@@ -204,6 +204,9 @@ export async function replayRoom(params: { userId: string; roomCode: string }) {
   if (room.hostId !== params.userId) {
     throw new AppError("FORBIDDEN", "فقط میزبان می‌تواند بازی تازه کند.");
   }
+  if (room.status !== "finished") {
+    throw new AppError("BAD_STATE", "بازی تازه فقط پس از پایان بازی ممکن است.");
+  }
   const active = await gameRepo.findLatestActiveGameForRoom(room.id);
   if (active) {
     throw new AppError("BAD_STATE", "ابتدا بازی جاری را تمام کنید.");

@@ -7,6 +7,17 @@ import { POLL_INTERVAL_MS } from "@/lib/constants";
 import { faDigits } from "@/lib/format";
 import { apiGet, apiPost } from "@/features/api/client";
 import { SiteShell } from "@/components/layout/SiteShell";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 type AnswerRow = {
   categoryKey: string;
@@ -166,10 +177,17 @@ export function GameClient({ roomCode }: { roomCode: string }) {
   if (error && !state) {
     return (
       <SiteShell>
-        <p className="text-red-600">{error}</p>
-        <Link href="/" className="mt-4 text-teal-700 underline">
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+        <Button
+          render={<Link href="/" />}
+          nativeButton={false}
+          variant="link"
+          className="mt-4 h-auto px-0 text-teal-700 dark:text-teal-300"
+        >
           خانه
-        </Link>
+        </Button>
       </SiteShell>
     );
   }
@@ -177,7 +195,7 @@ export function GameClient({ roomCode }: { roomCode: string }) {
   if (!state?.game || !state.round) {
     return (
       <SiteShell>
-        <p className="text-[var(--muted)]">در حال اتصال به بازی…</p>
+        <p className="text-muted-foreground">در حال اتصال به بازی…</p>
       </SiteShell>
     );
   }
@@ -208,70 +226,80 @@ export function GameClient({ roomCode }: { roomCode: string }) {
   return (
     <SiteShell>
       {error ? (
-        <p className="mb-4 text-sm text-red-600" role="alert">
-          {error}
-        </p>
+        <Alert variant="destructive" className="mb-4">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       ) : null}
 
       <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">دور {faDigits(round.roundNumber)}</h1>
-          <p className="text-[var(--muted)]">
+          <p className="text-muted-foreground">
             از {faDigits(game.totalRounds)} دور · حرف:{" "}
             <span className="text-3xl font-bold text-teal-600 dark:text-teal-300">
               {letter}
             </span>
           </p>
         </div>
-        <Link
-          href={`/lobby/${roomCode}`}
-          className="text-sm text-teal-700 underline dark:text-teal-300"
+        <Button
+          render={<Link href={`/lobby/${roomCode}`} />}
+          nativeButton={false}
+          variant="link"
+          className="h-auto px-0 text-sm text-teal-700 dark:text-teal-300"
         >
           بازگشت به لابی
-        </Link>
+        </Button>
       </div>
 
       {phase === "playing" ? (
         <section className="space-y-4">
-          <div className="rounded-2xl border border-slate-200 bg-[var(--card)] p-4 dark:border-slate-600">
-            <p className="text-sm text-[var(--muted)]">زمان باقی‌مانده</p>
-            <p className="text-4xl font-bold tabular-nums" dir="ltr">
-              {faDigits(secondsLeft)}
-            </p>
-          </div>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-normal text-muted-foreground">
+                زمان باقی‌مانده
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <p className="text-4xl font-bold tabular-nums" dir="ltr">
+                {faDigits(secondsLeft)}
+              </p>
+            </CardContent>
+          </Card>
           <div className="grid gap-3">
             {g.categories.map((c) => (
-              <label key={c.key} className="block text-sm">
-                <span className="mb-1 block font-medium">{c.title}</span>
-                <input
+              <div key={c.key} className="space-y-2">
+                <Label htmlFor={`cat-${c.key}`}>{c.title}</Label>
+                <Input
+                  id={`cat-${c.key}`}
                   value={form[c.key] ?? ""}
                   onChange={(e) =>
                     setForm((f) => ({ ...f, [c.key]: e.target.value }))
                   }
-                  className="w-full rounded-xl border border-slate-200 bg-[var(--card)] px-3 py-2 dark:border-slate-600"
+                  className="h-10"
                   dir="auto"
                   autoComplete="off"
                 />
-              </label>
+              </div>
             ))}
           </div>
-          <button
+          <Button
             type="button"
             onClick={() => void submitAnswers()}
             disabled={busy}
-            className="w-full rounded-xl bg-teal-600 px-4 py-3 font-medium text-white"
+            className="h-10 w-full bg-teal-600 text-white hover:bg-teal-700 dark:bg-teal-700 dark:hover:bg-teal-600"
           >
             ذخیره پاسخ‌ها
-          </button>
+          </Button>
           {isHost ? (
-            <button
+            <Button
               type="button"
+              variant="outline"
               onClick={() => void finishRound()}
               disabled={busy}
-              className="w-full rounded-xl border border-slate-300 px-4 py-3 font-medium dark:border-slate-500"
+              className="h-10 w-full"
             >
               پایان دور
-            </button>
+            </Button>
           ) : null}
         </section>
       ) : null}
@@ -280,92 +308,108 @@ export function GameClient({ roomCode }: { roomCode: string }) {
         <section className="space-y-6">
           <h2 className="text-lg font-semibold">پاسخ‌ها و امتیاز</h2>
           {g.categories.map((c) => (
-            <div
-              key={c.key}
-              className="rounded-2xl border border-slate-200 bg-[var(--card)] p-4 dark:border-slate-600"
-            >
-              <h3 className="mb-2 font-medium">{c.title}</h3>
-              <ul className="space-y-2">
-                {answersForCategory(c.key).map(({ player, answer }) => {
-                  const dup =
-                    answer &&
-                    isDuplicate(
-                      c.key,
-                      answer.normalizedValue,
-                      answer.isValid,
+            <Card key={c.key}>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">{c.title}</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <ul className="space-y-2">
+                  {answersForCategory(c.key).map(({ player, answer }) => {
+                    const dup =
+                      answer &&
+                      isDuplicate(
+                        c.key,
+                        answer.normalizedValue,
+                        answer.isValid,
+                      );
+                    return (
+                      <li
+                        key={player.id}
+                        className="flex flex-wrap items-center justify-between gap-2 text-sm"
+                      >
+                        <span>{player.displayName}</span>
+                        <span className="text-muted-foreground">
+                          {answer?.value || "—"}
+                          {answer && !answer.isValid ? (
+                            <Badge variant="destructive" className="me-2">
+                              نامعتبر
+                            </Badge>
+                          ) : null}
+                          {dup ? (
+                            <Badge
+                              variant="outline"
+                              className="me-2 border-amber-500/50 text-amber-700 dark:text-amber-400"
+                            >
+                              تکراری
+                            </Badge>
+                          ) : null}
+                          {phase !== "review" && answer ? (
+                            <span className="me-2 font-mono" dir="ltr">
+                              {faDigits(answer.score)}
+                            </span>
+                          ) : null}
+                        </span>
+                      </li>
                     );
-                  return (
-                    <li
-                      key={player.id}
-                      className="flex flex-wrap items-center justify-between gap-2 text-sm"
-                    >
-                      <span>{player.displayName}</span>
-                      <span className="text-[var(--muted)]">
-                        {answer?.value || "—"}
-                        {answer && !answer.isValid ? (
-                          <span className="mr-2 text-red-500">نامعتبر</span>
-                        ) : null}
-                        {dup ? (
-                          <span className="mr-2 text-amber-600">تکراری</span>
-                        ) : null}
-                        {phase !== "review" && answer ? (
-                          <span className="mr-2 font-mono" dir="ltr">
-                            {faDigits(answer.score)}
-                          </span>
-                        ) : null}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
+                  })}
+                </ul>
+              </CardContent>
+            </Card>
           ))}
 
-          <div className="rounded-2xl border border-slate-200 bg-[var(--card)] p-4 dark:border-slate-600">
-            <h3 className="mb-2 font-medium">جدول امتیاز</h3>
-            <ol className="space-y-1">
-              {g.leaderboard.map((row, i) => (
-                <li key={row.roomPlayerId} className="flex justify-between text-sm">
-                  <span>
-                    {faDigits(i + 1)}. {row.displayName}
-                  </span>
-                  <span className="font-mono" dir="ltr">
-                    {faDigits(row.totalScore)}
-                  </span>
-                </li>
-              ))}
-            </ol>
-          </div>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">جدول امتیاز</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <ol className="space-y-1">
+                {g.leaderboard.map((row, i) => (
+                  <li
+                    key={row.roomPlayerId}
+                    className="flex justify-between text-sm"
+                  >
+                    <span>
+                      {faDigits(i + 1)}. {row.displayName}
+                    </span>
+                    <span className="font-mono" dir="ltr">
+                      {faDigits(row.totalScore)}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            </CardContent>
+          </Card>
 
           {phase === "review" && isHost ? (
-            <button
+            <Button
               type="button"
               onClick={() => void scoreRound()}
               disabled={busy}
-              className="w-full rounded-xl bg-teal-600 px-4 py-3 font-medium text-white"
+              className="h-10 w-full bg-teal-600 text-white hover:bg-teal-700 dark:bg-teal-700 dark:hover:bg-teal-600"
             >
               محاسبه امتیاز دور
-            </button>
+            </Button>
           ) : null}
 
           {phase === "between" && isHost ? (
-            <button
+            <Button
               type="button"
               onClick={() => void nextRound()}
               disabled={busy}
-              className="w-full rounded-xl bg-slate-900 px-4 py-3 font-medium text-white dark:bg-slate-100 dark:text-slate-900"
+              className="h-10 w-full"
             >
               دور بعد / پایان بازی
-            </button>
+            </Button>
           ) : null}
 
           {phase === "finished" ? (
-            <Link
-              href={`/results/${game.id}`}
-              className="block w-full rounded-xl bg-teal-600 py-3 text-center font-medium text-white"
+            <Button
+              render={<Link href={`/results/${game.id}`} />}
+              nativeButton={false}
+              className="h-10 w-full bg-teal-600 text-white hover:bg-teal-700 dark:bg-teal-700 dark:hover:bg-teal-600"
             >
               صفحه نتایج نهایی
-            </Link>
+            </Button>
           ) : null}
         </section>
       )}

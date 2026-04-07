@@ -4,6 +4,11 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { SiteShell } from "@/components/layout/SiteShell";
 import { apiPost } from "@/features/api/client";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export default function CreateRoomPage() {
   const router = useRouter();
@@ -36,78 +41,77 @@ export default function CreateRoomPage() {
   return (
     <SiteShell>
       <h1 className="mb-6 text-2xl font-bold">ساخت اتاق</h1>
-      <form onSubmit={onSubmit} className="flex max-w-md flex-col gap-4">
-        <div>
-          <label htmlFor="dn" className="mb-1 block text-sm font-medium">
-            نام نمایشی
-          </label>
-          <input
-            id="dn"
-            name="displayName"
-            required
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-[var(--card)] px-3 py-2 dark:border-slate-600"
-            autoComplete="nickname"
-          />
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label htmlFor="r" className="mb-1 block text-sm font-medium">
-              تعداد دور
-            </label>
-            <input
-              id="r"
-              type="number"
-              min={1}
-              max={20}
-              value={rounds}
-              onChange={(e) => setRounds(Number(e.target.value))}
-              className="w-full rounded-xl border border-slate-200 bg-[var(--card)] px-3 py-2 dark:border-slate-600"
-            />
-          </div>
-          <div>
-            <label htmlFor="t" className="mb-1 block text-sm font-medium">
-              زمان دور (ثانیه)
-            </label>
-            <input
-              id="t"
-              type="number"
-              min={30}
-              max={600}
-              value={seconds}
-              onChange={(e) => setSeconds(Number(e.target.value))}
-              className="w-full rounded-xl border border-slate-200 bg-[var(--card)] px-3 py-2 dark:border-slate-600"
-            />
-          </div>
-        </div>
-        <div>
-          <label htmlFor="m" className="mb-1 block text-sm font-medium">
-            حداکثر بازیکن
-          </label>
-          <input
-            id="m"
-            type="number"
-            min={2}
-            max={16}
-            value={maxPlayers}
-            onChange={(e) => setMaxPlayers(Number(e.target.value))}
-            className="w-full rounded-xl border border-slate-200 bg-[var(--card)] px-3 py-2 dark:border-slate-600"
-          />
-        </div>
-        {error ? (
-          <p className="text-sm text-red-600 dark:text-red-400" role="alert">
-            {error}
-          </p>
-        ) : null}
-        <button
-          type="submit"
-          disabled={loading}
-          className="rounded-xl bg-teal-600 px-4 py-3 font-medium text-white disabled:opacity-60"
-        >
-          {loading ? "در حال ساخت…" : "ساخت اتاق"}
-        </button>
-      </form>
+      <Card className="max-w-md">
+        <CardHeader>
+          <CardTitle className="text-base">جزئیات اتاق</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={onSubmit} className="flex flex-col gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="dn">نام نمایشی</Label>
+              <Input
+                id="dn"
+                name="displayName"
+                required
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                className="h-10"
+                autoComplete="nickname"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="r">تعداد دور</Label>
+                <Input
+                  id="r"
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={rounds}
+                  onChange={(e) => setRounds(Number(e.target.value))}
+                  className="h-10"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="t">زمان دور (ثانیه)</Label>
+                <Input
+                  id="t"
+                  type="number"
+                  min={30}
+                  max={600}
+                  value={seconds}
+                  onChange={(e) => setSeconds(Number(e.target.value))}
+                  className="h-10"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="m">حداکثر بازیکن</Label>
+              <Input
+                id="m"
+                type="number"
+                min={2}
+                max={16}
+                value={maxPlayers}
+                onChange={(e) => setMaxPlayers(Number(e.target.value))}
+                className="h-10"
+              />
+            </div>
+            {error ? (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            ) : null}
+            <Button
+              type="submit"
+              disabled={loading}
+              className="h-10 w-full bg-teal-600 text-white hover:bg-teal-700 dark:bg-teal-700 dark:hover:bg-teal-600"
+            >
+              {loading ? "در حال ساخت…" : "ساخت اتاق"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </SiteShell>
   );
 }

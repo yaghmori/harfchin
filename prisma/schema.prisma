@@ -1,5 +1,7 @@
 generator client {
   provider = "prisma-client-js"
+  // Avoid pnpm’s deep node_modules path on Windows (EPERM renaming query_engine DLL).
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
@@ -28,7 +30,7 @@ enum RoundStatus {
 }
 
 model User {
-  id          String       @id @default(cuid())
+  id          String       @id @default(uuid())
   name        String?
   email       String?      @unique
   isGuest     Boolean      @default(true)
@@ -39,7 +41,7 @@ model User {
 }
 
 model Room {
-  id                String       @id @default(cuid())
+  id                String       @id @default(uuid())
   code              String       @unique
   hostId            String
   host              User         @relation("RoomHost", fields: [hostId], references: [id])
@@ -54,7 +56,7 @@ model Room {
 }
 
 model RoomPlayer {
-  id          String        @id @default(cuid())
+  id          String        @id @default(uuid())
   roomId      String
   room        Room          @relation(fields: [roomId], references: [id], onDelete: Cascade)
   userId      String
@@ -71,7 +73,7 @@ model RoomPlayer {
 }
 
 model Game {
-  id           String        @id @default(cuid())
+  id           String        @id @default(uuid())
   roomId       String
   room         Room          @relation(fields: [roomId], references: [id])
   status       GameStatus    @default(pending)
@@ -87,7 +89,7 @@ model Game {
 }
 
 model Round {
-  id          String        @id @default(cuid())
+  id          String        @id @default(uuid())
   gameId      String
   game        Game          @relation(fields: [gameId], references: [id], onDelete: Cascade)
   roundNumber Int
@@ -102,7 +104,7 @@ model Round {
 }
 
 model Category {
-  id        String        @id @default(cuid())
+  id        String        @id @default(uuid())
   key       String        @unique
   title     String
   sortOrder Int
@@ -111,7 +113,7 @@ model Category {
 }
 
 model RoundAnswer {
-  id              String     @id @default(cuid())
+  id              String     @id @default(uuid())
   roundId         String
   round           Round      @relation(fields: [roundId], references: [id], onDelete: Cascade)
   roomPlayerId    String
@@ -129,7 +131,7 @@ model RoundAnswer {
 }
 
 model PlayerScore {
-  id           String     @id @default(cuid())
+  id           String     @id @default(uuid())
   gameId       String
   game         Game       @relation(fields: [gameId], references: [id], onDelete: Cascade)
   roomPlayerId String

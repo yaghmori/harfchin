@@ -5,13 +5,14 @@
   "packageManager": "pnpm@10.12.1",
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
+    "build": "node scripts/prisma-with-env.mjs generate && next build",
     "start": "next start",
     "lint": "eslint",
-    "db:generate": "prisma generate",
-    "db:migrate": "prisma migrate dev",
-    "db:push": "prisma db push",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:generate": "node scripts/prisma-with-env.mjs generate",
+    "db:migrate": "node scripts/prisma-with-env.mjs migrate dev",
+    "db:push": "node scripts/prisma-with-env.mjs db push",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:studio": "node scripts/prisma-with-env.mjs studio"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -36,6 +37,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "babel-plugin-react-compiler": "1.0.0",
+    "dotenv": "^16.6.1",
     "eslint": "^9",
     "eslint-config-next": "16.2.2",
     "prisma": "^6.19.0",

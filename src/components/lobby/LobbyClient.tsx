@@ -7,6 +7,18 @@ import { POLL_INTERVAL_MS } from "@/lib/constants";
 import { faDigits } from "@/lib/format";
 import { apiGet, apiPost } from "@/features/api/client";
 import { SiteShell } from "@/components/layout/SiteShell";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 type Player = {
   id: string;
@@ -143,10 +155,17 @@ export function LobbyClient({ roomCode }: { roomCode: string }) {
   if (error && !state) {
     return (
       <SiteShell>
-        <p className="text-red-600">{error}</p>
-        <Link href="/" className="mt-4 text-teal-700 underline">
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+        <Button
+          render={<Link href="/" />}
+          nativeButton={false}
+          variant="link"
+          className="mt-4 h-auto px-0 text-teal-700 dark:text-teal-300"
+        >
           بازگشت
-        </Link>
+        </Button>
       </SiteShell>
     );
   }
@@ -154,7 +173,7 @@ export function LobbyClient({ roomCode }: { roomCode: string }) {
   if (!state) {
     return (
       <SiteShell>
-        <p className="text-[var(--muted)]">در حال بارگذاری لابی…</p>
+        <p className="text-muted-foreground">در حال بارگذاری لابی…</p>
       </SiteShell>
     );
   }
@@ -169,148 +188,171 @@ export function LobbyClient({ roomCode }: { roomCode: string }) {
   return (
     <SiteShell>
       {error ? (
-        <p className="mb-4 text-sm text-red-600" role="alert">
-          {error}
-        </p>
+        <Alert variant="destructive" className="mb-4">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       ) : null}
 
       <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">لابی</h1>
-          <p className="text-[var(--muted)]">
+          <p className="text-muted-foreground">
             کد اتاق:{" "}
             <span className="font-mono text-lg font-semibold text-foreground" dir="ltr">
               {state.roomCode}
             </span>
           </p>
         </div>
-        <button
+        <Button
           type="button"
+          variant="outline"
           onClick={() => void leave()}
           disabled={busy}
-          className="rounded-xl border border-slate-200 px-4 py-2 text-sm dark:border-slate-600"
+          className="h-9"
         >
           ترک اتاق
-        </button>
+        </Button>
       </div>
 
       {isHost && state.status === "waiting" ? (
-        <form
-          onSubmit={saveSettings}
-          className="mb-8 rounded-2xl border border-slate-200 bg-[var(--card)] p-4 dark:border-slate-600"
-        >
-          <h2 className="mb-3 font-semibold">تنظیمات بازی (میزبان)</h2>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <label className="text-sm">
-              تعداد دور
-              <input
-                type="number"
-                min={1}
-                max={20}
-                value={draftRounds}
-                onChange={(e) => setDraftRounds(Number(e.target.value))}
-                className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1 dark:border-slate-600"
-              />
-            </label>
-            <label className="text-sm">
-              زمان دور (ثانیه)
-              <input
-                type="number"
-                min={30}
-                max={600}
-                value={draftSec}
-                onChange={(e) => setDraftSec(Number(e.target.value))}
-                className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1 dark:border-slate-600"
-              />
-            </label>
-            <label className="text-sm">
-              حداکثر بازیکن
-              <input
-                type="number"
-                min={2}
-                max={16}
-                value={draftMax}
-                onChange={(e) => setDraftMax(Number(e.target.value))}
-                className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1 dark:border-slate-600"
-              />
-            </label>
-          </div>
-          <button
-            type="submit"
-            disabled={busy}
-            className="mt-3 rounded-lg bg-slate-800 px-3 py-2 text-sm text-white dark:bg-slate-200 dark:text-slate-900"
-          >
-            ذخیره تنظیمات
-          </button>
-        </form>
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="text-base">تنظیمات بازی (میزبان)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form id="lobby-settings" onSubmit={saveSettings} className="space-y-4">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="space-y-2">
+                  <Label htmlFor="draftRounds">تعداد دور</Label>
+                  <Input
+                    id="draftRounds"
+                    type="number"
+                    min={1}
+                    max={20}
+                    value={draftRounds}
+                    onChange={(e) => setDraftRounds(Number(e.target.value))}
+                    className="h-9"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="draftSec">زمان دور (ثانیه)</Label>
+                  <Input
+                    id="draftSec"
+                    type="number"
+                    min={30}
+                    max={600}
+                    value={draftSec}
+                    onChange={(e) => setDraftSec(Number(e.target.value))}
+                    className="h-9"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="draftMax">حداکثر بازیکن</Label>
+                  <Input
+                    id="draftMax"
+                    type="number"
+                    min={2}
+                    max={16}
+                    value={draftMax}
+                    onChange={(e) => setDraftMax(Number(e.target.value))}
+                    className="h-9"
+                  />
+                </div>
+              </div>
+            </form>
+          </CardContent>
+          <CardFooter className="justify-start border-t-0 pt-0">
+            <Button
+              type="submit"
+              form="lobby-settings"
+              disabled={busy}
+              size="sm"
+            >
+              ذخیره تنظیمات
+            </Button>
+          </CardFooter>
+        </Card>
       ) : null}
 
       <section className="mb-8">
         <h2 className="mb-3 font-semibold">بازیکنان</h2>
         <ul className="space-y-2">
           {state.players.map((p) => (
-            <li
-              key={p.id}
-              className="flex items-center justify-between rounded-xl border border-slate-200 bg-[var(--card)] px-3 py-2 dark:border-slate-600"
-            >
-              <span>
-                {p.displayName}
-                {p.isHost ? (
-                  <span className="mr-2 text-xs text-teal-600">میزبان</span>
-                ) : null}
-              </span>
-              <span className="text-sm text-[var(--muted)]">
-                {p.isReady ? "آماده" : "در انتظار"}
-              </span>
+            <li key={p.id}>
+              <Card className="py-3">
+                <CardContent className="flex items-center justify-between px-3 py-0">
+                  <span className="flex flex-wrap items-center gap-2">
+                    {p.displayName}
+                    {p.isHost ? (
+                      <Badge
+                        variant="secondary"
+                        className="text-xs text-teal-700 dark:text-teal-300"
+                      >
+                        میزبان
+                      </Badge>
+                    ) : null}
+                  </span>
+                  <span className="text-sm text-muted-foreground">
+                    {p.isReady ? "آماده" : "در انتظار"}
+                  </span>
+                </CardContent>
+              </Card>
             </li>
           ))}
         </ul>
       </section>
 
       {state.status === "finished" && state.lastFinishedGameId ? (
-        <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/40">
-          <p className="font-medium">این بازی به پایان رسیده است.</p>
-          <Link
-            href={`/results/${state.lastFinishedGameId}`}
-            className="rounded-xl bg-teal-600 py-3 text-center font-medium text-white"
-          >
-            مشاهده نتایج
-          </Link>
-          {isHost ? (
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void replayLobby()}
-              className="rounded-xl border border-slate-300 py-3 font-medium dark:border-slate-500"
+        <Alert className="mb-6 border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/40">
+          <AlertDescription className="flex flex-col gap-3 text-foreground">
+            <span className="font-medium">این بازی به پایان رسیده است.</span>
+            <Button
+              render={
+                <Link href={`/results/${state.lastFinishedGameId}`} />
+              }
+              nativeButton={false}
+              className="h-10 w-full bg-teal-600 text-white hover:bg-teal-700 dark:bg-teal-700 dark:hover:bg-teal-600"
             >
-              بازی دوباره (بازنشانی لابی)
-            </button>
-          ) : null}
-        </div>
+              مشاهده نتایج
+            </Button>
+            {isHost ? (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={busy}
+                onClick={() => void replayLobby()}
+                className="h-10 w-full"
+              >
+                بازی دوباره (بازنشانی لابی)
+              </Button>
+            ) : null}
+          </AlertDescription>
+        </Alert>
       ) : null}
 
       <div className="flex flex-col gap-3 sm:flex-row">
-        <button
+        <Button
           type="button"
           onClick={() => void toggleReady()}
           disabled={busy || !me || state.status === "finished"}
-          className="flex-1 rounded-xl bg-teal-600 px-4 py-3 font-medium text-white disabled:opacity-50"
+          className="h-10 flex-1 bg-teal-600 text-white hover:bg-teal-700 dark:bg-teal-700 dark:hover:bg-teal-600"
         >
           {me?.isReady ? "لغو آمادگی" : "من آماده‌ام"}
-        </button>
+        </Button>
         {isHost ? (
-          <button
+          <Button
             type="button"
+            variant="outline"
             onClick={() => void startGame()}
             disabled={!canStart || busy || state.status === "finished"}
-            className="flex-1 rounded-xl border-2 border-teal-600 px-4 py-3 font-medium text-teal-700 disabled:opacity-50 dark:text-teal-300"
+            className="h-10 flex-1 border-2 border-teal-600 text-teal-700 dark:border-teal-500 dark:text-teal-300"
           >
             شروع بازی
-          </button>
+          </Button>
         ) : null}
       </div>
 
-      <p className="mt-6 text-sm text-[var(--muted)]">
+      <p className="mt-6 text-sm text-muted-foreground">
         حداقل {faDigits(state.minPlayersToStart)} بازیکن و آمادگی همه برای شروع لازم است.
       </p>
     </SiteShell>
