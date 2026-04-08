@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { apiPost } from "@/features/api/client";
+import { useSyncErrorToToast } from "@/hooks/use-sync-error-toast";
 import { MAX_DISPLAY_NAME_LENGTH } from "@/lib/constants";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 const ROOM_CODE_PATTERN = /[A-HJKLMNPQRSTUVWXYZ2-9]{4,8}/i;
 
@@ -32,6 +34,8 @@ export function JoinRoomForm() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [qrBusy, setQrBusy] = useState(false);
+
+  useSyncErrorToToast(error);
 
   useEffect(() => {
     const raw = searchParams.get("code");
@@ -104,6 +108,7 @@ export function JoinRoomForm() {
         roomCode: roomCode.trim(),
         displayName,
       });
+      toast.success("به اتاق پیوستید.");
       router.push(`/lobby/${data.roomCode}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "خطا");

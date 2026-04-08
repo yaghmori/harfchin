@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { useSyncErrorToToast } from "@/hooks/use-sync-error-toast";
 import { faDigits } from "@/lib/format";
 import { apiGet, apiPost } from "@/features/api/client";
+import { CategoryPlayerTabs } from "@/components/game/CategoryPlayerTabs";
 import { GameBottomNav } from "@/components/game/GameBottomNav";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +35,8 @@ import {
   Zap,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 type AnswerRow = {
   categoryKey: string;
@@ -70,6 +74,11 @@ type ResultsPayload = {
   leaderboard: { roomPlayerId: string; displayName: string; totalScore: number }[];
   categories: { key: string; title: string }[];
   players: PlayerRow[];
+  roundsSummary?: {
+    roundNumber: number;
+    letter: string;
+    players: PlayerRow[];
+  }[];
 };
 
 function categoryIcon(key: string): LucideIcon {
@@ -96,6 +105,9 @@ export function ResultsClient({ gameId }: { gameId: string }) {
   const [data, setData] = useState<ResultsPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [roundIdx, setRoundIdx] = useState(0);
+
+  useSyncErrorToToast(error);
 
   const load = useCallback(async () => {
     try {
@@ -113,12 +125,17 @@ export function ResultsClient({ gameId }: { gameId: string }) {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    setRoundIdx(0);
+  }, [gameId]);
+
   async function replay() {
     if (!data) return;
     if (data.hostUserId !== data.meUserId) return;
     setBusy(true);
     try {
       await apiPost("/api/room/replay", { roomCode: data.roomCode });
+      toast.success("بازگشت به لابی برای بازی دوباره.");
       router.push(`/lobby/${data.roomCode}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "خطا");
@@ -158,6 +175,27 @@ export function ResultsClient({ gameId }: { gameId: string }) {
   const winnerPlayer = winner
     ? (data.players.find((p) => p.id === winner.roomPlayerId) ?? null)
     : null;
+
+  const roundsSummary = data.roundsSummary ?? [];
+  const rsLen = roundsSummary.length;
+  const safeRoundIdx = rsLen ? Math.min(roundIdx, rsLen - 1) : 0;
+  const activeRound = rsLen ? roundsSummary[safeRoundIdx] : null;
+  const activeRoundPlayers = activeRound?.players ?? data.players;
+
+  function isDuplicateForActiveRound(
+    catKey: string,
+    normalized: string,
+    isValid: boolean,
+  ) {
+    if (!isValid || !normalized) return false;
+    const vals = activeRoundPlayers
+      .map((p) => {
+        const a = p.answers.find((x) => x.categoryKey === catKey);
+        return a?.isValid ? a.normalizedValue : "";
+      })
+      .filter(Boolean);
+    return vals.filter((v) => v === normalized).length > 1;
+  }
 
   const answersByKey = new Map(
     (winnerPlayer?.answers ?? []).map((a) => [a.categoryKey, a]),
@@ -246,69 +284,149 @@ export function ResultsClient({ gameId }: { gameId: string }) {
           </p>
         </section>
 
-        <Card className="border-ka-outline-variant/40 ka-kinetic-shadow">
-          <CardHeader className="flex flex-row items-start justify-between gap-2 pb-2">
-            <div>
-              <CardTitle className="font-heading text-base text-ka-primary">
-                جزئیات امتیازات
-              </CardTitle>
-              <p className="mt-0.5 text-xs text-ka-on-surface-variant">
-                آخرین دور · حرف{" "}
-                <span className="font-bold text-ka-primary">
-                  {data.round?.letter ?? "—"}
-                </span>
-              </p>
+        {rsLen > 0 && winner ? (
+          <div className="space-y-3">
+            <p className="text-center text-xs font-bold text-ka-on-surface-variant">
+              پاسخ بقیه بازیکنان در هر دور (برنده: {winner.displayName})
+            </p>
+            <div
+              className="flex gap-1.5 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              role="tablist"
+              aria-label="دورها"
+            >
+              {roundsSummary.map((r, i) => {
+                const on = i === safeRoundIdx;
+                return (
+                  <button
+                    key={r.roundNumber}
+                    type="button"
+                    role="tab"
+                    aria-selected={on}
+                    onClick={() => setRoundIdx(i)}
+                    className={cn(
+                      "shrink-0 rounded-full px-3.5 py-2 text-xs font-black transition-colors",
+                      on
+                        ? "bg-ka-primary text-white shadow-sm"
+                        : "bg-ka-surface-container-high text-ka-on-surface-variant hover:bg-ka-surface-container-highest",
+                    )}
+                  >
+                    دور {faDigits(r.roundNumber)} · {r.letter}
+                  </button>
+                );
+              })}
             </div>
-            <Badge className="rounded-full border-0 bg-ka-secondary-container font-heading text-xs font-bold text-ka-on-secondary-container">
-              این مرحله
-            </Badge>
-          </CardHeader>
-          <CardContent className="space-y-0 pt-0">
-            <ul className="divide-y divide-ka-outline-variant/35">
-              {roundRows.map((row) => (
-                <li
-                  key={row.key}
-                  className="flex items-center justify-between gap-3 py-3 first:pt-0"
-                >
-                  <span className="flex min-w-0 items-center gap-2.5">
-                    <row.Icon
-                      className="size-5 shrink-0 text-ka-primary"
-                      aria-hidden
-                    />
-                    <span className="min-w-0">
-                      <span className="block text-xs font-bold text-ka-on-surface-variant">
-                        {row.title}
-                      </span>
-                      <span className="block truncate font-semibold text-ka-on-surface">
-                        {row.value}
+            <Card className="border-ka-outline-variant/40 ka-kinetic-shadow">
+              <CardHeader className="pb-2">
+                <CardTitle className="font-heading text-base text-ka-primary">
+                  جزئیات این دور
+                </CardTitle>
+                <p className="mt-0.5 text-xs text-ka-on-surface-variant">
+                  حرف{" "}
+                  <span className="font-bold text-ka-primary">
+                    {activeRound?.letter ?? "—"}
+                  </span>
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-0 pt-0">
+                <ul className="divide-y divide-ka-outline-variant/35">
+                  {data.categories.map((c) => {
+                    const Icon = categoryIcon(c.key);
+                    return (
+                      <li
+                        key={c.key}
+                        className="flex flex-col gap-3 py-4 first:pt-0 sm:flex-row sm:items-start sm:gap-4"
+                      >
+                        <span className="flex shrink-0 items-center gap-2.5 sm:w-[40%]">
+                          <Icon
+                            className="size-5 shrink-0 text-ka-primary"
+                            aria-hidden
+                          />
+                          <span className="text-xs font-bold text-ka-on-surface-variant">
+                            {c.title}
+                          </span>
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <CategoryPlayerTabs
+                            players={activeRoundPlayers}
+                            categoryKey={c.key}
+                            meRoomPlayerId={data.meRoomPlayerId}
+                            excludedPlayerIds={[winner.roomPlayerId]}
+                            showScores
+                            isDuplicate={isDuplicateForActiveRound}
+                          />
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </CardContent>
+            </Card>
+          </div>
+        ) : (
+          <Card className="border-ka-outline-variant/40 ka-kinetic-shadow">
+            <CardHeader className="flex flex-row items-start justify-between gap-2 pb-2">
+              <div>
+                <CardTitle className="font-heading text-base text-ka-primary">
+                  جزئیات امتیازات
+                </CardTitle>
+                <p className="mt-0.5 text-xs text-ka-on-surface-variant">
+                  آخرین دور · حرف{" "}
+                  <span className="font-bold text-ka-primary">
+                    {data.round?.letter ?? "—"}
+                  </span>
+                </p>
+              </div>
+              <Badge className="rounded-full border-0 bg-ka-secondary-container font-heading text-xs font-bold text-ka-on-secondary-container">
+                برنده
+              </Badge>
+            </CardHeader>
+            <CardContent className="space-y-0 pt-0">
+              <ul className="divide-y divide-ka-outline-variant/35">
+                {roundRows.map((row) => (
+                  <li
+                    key={row.key}
+                    className="flex items-center justify-between gap-3 py-3 first:pt-0"
+                  >
+                    <span className="flex min-w-0 items-center gap-2.5">
+                      <row.Icon
+                        className="size-5 shrink-0 text-ka-primary"
+                        aria-hidden
+                      />
+                      <span className="min-w-0">
+                        <span className="block text-xs font-bold text-ka-on-surface-variant">
+                          {row.title}
+                        </span>
+                        <span className="block truncate font-semibold text-ka-on-surface">
+                          {row.value}
+                        </span>
                       </span>
                     </span>
+                    <span
+                      className="shrink-0 font-heading text-base font-black text-ka-primary"
+                      dir="ltr"
+                    >
+                      +{faDigits(row.score)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-4 border-t border-dashed border-ka-outline-variant/50 pt-4">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-bold text-ka-on-surface-variant">
+                    مجموع دور (برنده)
                   </span>
-                  <span
-                    className="shrink-0 font-heading text-base font-black text-ka-primary"
-                    dir="ltr"
-                  >
-                    +{faDigits(row.score)}
+                  <span className="flex items-center gap-1.5 font-heading text-2xl font-black text-amber-600">
+                    {faDigits(roundTotal)}
+                    <Star
+                      className="size-6 fill-amber-400 text-amber-600"
+                      aria-hidden
+                    />
                   </span>
-                </li>
-              ))}
-            </ul>
-            <div className="mt-4 border-t border-dashed border-ka-outline-variant/50 pt-4">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-sm font-bold text-ka-on-surface-variant">
-                  مجموع دور
-                </span>
-                <span className="flex items-center gap-1.5 font-heading text-2xl font-black text-amber-600">
-                  {faDigits(roundTotal)}
-                  <Star
-                    className="size-6 fill-amber-400 text-amber-600"
-                    aria-hidden
-                  />
-                </span>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="overflow-hidden rounded-3xl bg-linear-to-l from-ka-primary to-ka-primary-container px-4 py-4 text-white shadow-lg">
           <div className="flex items-center gap-3">

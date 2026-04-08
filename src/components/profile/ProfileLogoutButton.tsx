@@ -5,6 +5,7 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { apiPost } from "@/features/api/client";
 import { LogOut } from "lucide-react";
+import { toast } from "sonner";
 
 export function ProfileLogoutButton() {
   const router = useRouter();
@@ -14,8 +15,13 @@ export function ProfileLogoutButton() {
     setPending(true);
     try {
       await apiPost<{ ok: boolean }>("/api/auth/logout", {});
+      toast.success("از حساب کاربری خارج شدید.");
       router.push("/");
       router.refresh();
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : "خروج ناموفق بود.",
+      );
     } finally {
       setPending(false);
     }

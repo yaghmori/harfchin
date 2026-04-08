@@ -18,7 +18,9 @@ import {
   Users,
 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { apiPost } from "@/features/api/client";
+import { useSyncErrorToToast } from "@/hooks/use-sync-error-toast";
 import { faDigits } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -37,6 +39,69 @@ const TIME_OPTIONS = [
 const MIN_PLAYERS = 2;
 const MAX_PLAYERS_UI = 12;
 
+type CreateRoomInvitePanelProps = {
+  loading: boolean;
+  qrDataUrl: string | null;
+  joinUrl: string;
+  copyDone: boolean;
+  onCopyInvite: () => void;
+};
+
+function CreateRoomInvitePanel({
+  loading,
+  qrDataUrl,
+  joinUrl,
+  copyDone,
+  onCopyInvite,
+}: CreateRoomInvitePanelProps) {
+  return (
+    <section className="space-y-6 rounded-xl border border-ka-surface-container-high bg-white p-8 text-center shadow-[0_12px_32px_rgba(25,28,29,0.06)] dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="inline-block rounded-lg border-2 border-dashed border-ka-primary/20 bg-ka-surface-container-lowest p-4">
+        {qrDataUrl ? (
+          <Image
+            src={qrDataUrl}
+            alt="کد QR ورود به اتاق"
+            width={160}
+            height={160}
+            unoptimized
+            className="mx-auto size-40 rounded-md"
+          />
+        ) : (
+          <div
+            className="flex size-40 flex-col items-center justify-center gap-2 rounded-md bg-ka-surface-container-low"
+            aria-busy="true"
+          >
+            <Loader2
+              className="size-10 shrink-0 animate-spin text-ka-primary"
+              aria-hidden
+            />
+            <span className="sr-only">
+              {loading ? "در حال ایجاد اتاق…" : "در حال ساخت کد QR…"}
+            </span>
+          </div>
+        )}
+      </div>
+      <div className="space-y-2">
+        <p className="font-bold text-ka-on-surface">
+          برای دعوت سریع، این کد را با دوستانتان به اشتراک بگذارید
+        </p>
+        <p className="text-sm text-ka-outline">
+          دوستان شما با اسکن این کد مستقیماً وارد این اتاق می‌شوند
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={() => void onCopyInvite()}
+        disabled={!joinUrl}
+        className="mx-auto flex items-center justify-center gap-2 rounded-full border border-ka-primary/20 px-6 py-2 text-sm font-bold text-ka-primary transition-colors hover:bg-ka-primary/5 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        <Copy className="size-4 shrink-0" aria-hidden />
+        <span>{copyDone ? "کپی شد!" : "کپی کردن لینک دعوت"}</span>
+      </button>
+    </section>
+  );
+}
+
 export function CreateRoomClient() {
   const router = useRouter();
   const [roomTitle, setRoomTitle] = useState("");
@@ -53,6 +118,8 @@ export function CreateRoomClient() {
   const [createdRoomCode, setCreatedRoomCode] = useState<string | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [copyDone, setCopyDone] = useState(false);
+
+  useSyncErrorToToast(error);
 
   const joinUrl = useMemo(() => {
     if (typeof window === "undefined" || !createdRoomCode) return "";
@@ -89,6 +156,7 @@ export function CreateRoomClient() {
         maxPlayers,
       });
       setCreatedRoomCode(data.roomCode);
+      toast.success("اتاق ساخته شد. کد را با دوستان به اشتراک بگذارید.");
       const invite = new URL("/join", window.location.origin);
       invite.searchParams.set("code", data.roomCode);
       void buildQr(invite.toString());
@@ -104,6 +172,7 @@ export function CreateRoomClient() {
     try {
       await navigator.clipboard.writeText(joinUrl);
       setCopyDone(true);
+      toast.success("لینک دعوت در کلیپ‌بورد کپی شد.");
       setTimeout(() => setCopyDone(false), 2000);
     } catch {
       setError("کپی در این مرورگر در دسترس نیست.");
@@ -298,62 +367,14 @@ export function CreateRoomClient() {
           </section>
         </form>
 
-        {(loading || createdRoomCode) && (
-        <section className="space-y-6 rounded-xl border border-ka-surface-container-high bg-white p-8 text-center shadow-[0_12px_32px_rgba(25,28,29,0.06)] dark:bg-zinc-900 dark:border-zinc-800">
-          <div className="inline-block rounded-lg border-2 border-dashed border-ka-primary/20 bg-ka-surface-container-lowest p-4">
-            {qrDataUrl ? (
-              <Image
-                src={qrDataUrl}
-                alt="کد QR ورود به اتاق"
-                width={160}
-                height={160}
-                unoptimized
-                className="mx-auto size-40 rounded-md"
-              />
-            ) : (
-              <div
-                className="flex size-40 flex-col items-center justify-center gap-2 rounded-md bg-ka-surface-container-low"
-                aria-busy="true"
-              >
-                <Loader2
-                  className="size-10 shrink-0 animate-spin text-ka-primary"
-                  aria-hidden
-                />
-                <span className="sr-only">
-                  {loading
-                    ? "در حال ایجاد اتاق…"
-                    : "در حال ساخت کد QR…"}
-                </span>
-              </div>
-            )}
-          </div>
-          <div className="space-y-2">
-            <p className="font-bold text-ka-on-surface">
-              برای دعوت سریع، این کد را با دوستانتان به اشتراک بگذارید
-            </p>
-            <p className="text-sm text-ka-outline">
-              دوستان شما با اسکن این کد مستقیماً وارد این اتاق می‌شوند
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => void copyInviteLink()}
-            disabled={!joinUrl}
-            className="mx-auto flex items-center justify-center gap-2 rounded-full border border-ka-primary/20 px-6 py-2 text-sm font-bold text-ka-primary transition-colors hover:bg-ka-primary/5 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <Copy className="size-4 shrink-0" aria-hidden />
-            <span>{copyDone ? "کپی شد!" : "کپی کردن لینک دعوت"}</span>
-          </button>
-        </section>
-        )}
-
-        {error ? (
-          <p
-            className="rounded-lg bg-ka-error-container px-4 py-3 text-center text-sm font-semibold text-ka-on-error-container"
-            role="alert"
-          >
-            {error}
-          </p>
+        {loading || createdRoomCode ? (
+          <CreateRoomInvitePanel
+            loading={loading}
+            qrDataUrl={qrDataUrl}
+            joinUrl={joinUrl}
+            copyDone={copyDone}
+            onCopyInvite={copyInviteLink}
+          />
         ) : null}
       </main>
 

@@ -514,6 +514,53 @@ export async function getGameStateByGameId(gameId: string) {
     }));
   }
 
+  type RoundPlayerPayload = (typeof players)[number];
+
+  const roundsSummary: {
+    roundNumber: number;
+    letter: string;
+    players: RoundPlayerPayload[];
+  }[] = [];
+
+  if (game.status === "finished") {
+    const allRounds = await gameRepo.listRoundsForGame(game.id);
+    for (const r of allRounds) {
+      const allAnswers = await answerRepo.listAnswersForRound(r.id);
+      const answersByPlayer = new Map<
+        string,
+        {
+          categoryKey: string;
+          value: string;
+          normalizedValue: string;
+          isValid: boolean;
+          score: number;
+        }[]
+      >();
+      for (const a of allAnswers) {
+        const list = answersByPlayer.get(a.roomPlayerId) ?? [];
+        list.push({
+          categoryKey: a.category.key,
+          value: a.value,
+          normalizedValue: a.normalizedValue,
+          isValid: a.isValid,
+          score: a.score,
+        });
+        answersByPlayer.set(a.roomPlayerId, list);
+      }
+      const roundPlayers = game.room.players.map((p) => ({
+        id: p.id,
+        displayName: p.displayName,
+        isHost: p.isHost,
+        answers: answersByPlayer.get(p.id) ?? [],
+      }));
+      roundsSummary.push({
+        roundNumber: r.roundNumber,
+        letter: r.letter,
+        players: roundPlayers,
+      });
+    }
+  }
+
   return {
     hostUserId: game.room.hostId,
     roomCode: game.room.code,
@@ -535,5 +582,6 @@ export async function getGameStateByGameId(gameId: string) {
     leaderboard,
     categories: categories.map((c) => ({ key: c.key, title: c.title })),
     players,
+    roundsSummary,
   };
 }

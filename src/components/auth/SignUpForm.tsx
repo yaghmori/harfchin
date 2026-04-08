@@ -8,12 +8,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 const GOOGLE_ICON =
   "https://lh3.googleusercontent.com/aida-public/AB6AXuAukGmyZ5uZ5aU3pyMOe4uoP4nlpAHO5IFF8bw_QBGiiUg7LmCkY8DnRRPX0knwMdDl7xtguK-_5Q576RTRpyz0luWiccy5KMIT3bcK-a8avnTf3REf9Rd7Nu4m6AqSn3KnZZQAOsDYvfTF2kk4GhSCSOXguqulZBAJevn3Jtk4zq1zEy2sEL1AY858bfmXoSy2Ez0kYGY1-dohqtLb7Yk0nYkO55CAqPq-Xu1t8se4uOuChSqDydAHiVR7jpYf5XUzcOP9A522LG8";
 
+type SignUpField = "name" | "email" | "password" | "confirmPassword";
+
 type SignUpFormProps = {
   className?: string;
+  fieldErrors?: Partial<Record<SignUpField, string>>;
+  onFieldChange?: (field: SignUpField) => void;
   onSubmit?: (data: {
     name: string;
     email: string;
@@ -22,7 +27,12 @@ type SignUpFormProps = {
   }) => void;
 };
 
-export function SignUpForm({ className, onSubmit }: SignUpFormProps) {
+export function SignUpForm({
+  className,
+  fieldErrors,
+  onFieldChange,
+  onSubmit,
+}: SignUpFormProps) {
   const [name, setName] = React.useState("");
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
@@ -31,6 +41,10 @@ export function SignUpForm({ className, onSubmit }: SignUpFormProps) {
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     onSubmit?.({ name, email, password, confirmPassword });
+  }
+
+  function oauthSoon() {
+    toast.info("ثبت‌نام با گوگل و اپل به‌زودی فعال می‌شود.");
   }
 
   return (
@@ -54,11 +68,27 @@ export function SignUpForm({ className, onSubmit }: SignUpFormProps) {
             type="text"
             autoComplete="name"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => {
+              setName(e.target.value);
+              onFieldChange?.("name");
+            }}
             placeholder="مثلاً آرش بهرامی"
             className="ps-11"
+            aria-invalid={Boolean(fieldErrors?.name)}
+            aria-describedby={
+              fieldErrors?.name ? "signup-name-error" : undefined
+            }
           />
         </div>
+        {fieldErrors?.name ? (
+          <p
+            id="signup-name-error"
+            className="text-sm font-medium text-destructive"
+            role="alert"
+          >
+            {fieldErrors.name}
+          </p>
+        ) : null}
       </div>
 
       <div className="space-y-2">
@@ -76,11 +106,27 @@ export function SignUpForm({ className, onSubmit }: SignUpFormProps) {
             type="email"
             autoComplete="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              onFieldChange?.("email");
+            }}
             placeholder="user@email.com"
             className="ps-11"
+            aria-invalid={Boolean(fieldErrors?.email)}
+            aria-describedby={
+              fieldErrors?.email ? "signup-email-error" : undefined
+            }
           />
         </div>
+        {fieldErrors?.email ? (
+          <p
+            id="signup-email-error"
+            className="text-sm font-medium text-destructive"
+            role="alert"
+          >
+            {fieldErrors.email}
+          </p>
+        ) : null}
       </div>
 
       <div className="space-y-2">
@@ -98,11 +144,27 @@ export function SignUpForm({ className, onSubmit }: SignUpFormProps) {
             type="password"
             autoComplete="new-password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              onFieldChange?.("password");
+            }}
             placeholder="••••••••"
             className="ps-11"
+            aria-invalid={Boolean(fieldErrors?.password)}
+            aria-describedby={
+              fieldErrors?.password ? "signup-password-error" : undefined
+            }
           />
         </div>
+        {fieldErrors?.password ? (
+          <p
+            id="signup-password-error"
+            className="text-sm font-medium text-destructive"
+            role="alert"
+          >
+            {fieldErrors.password}
+          </p>
+        ) : null}
       </div>
 
       <div className="space-y-2">
@@ -120,11 +182,29 @@ export function SignUpForm({ className, onSubmit }: SignUpFormProps) {
             type="password"
             autoComplete="new-password"
             value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
+            onChange={(e) => {
+              setConfirmPassword(e.target.value);
+              onFieldChange?.("confirmPassword");
+            }}
             placeholder="••••••••"
             className="ps-11"
+            aria-invalid={Boolean(fieldErrors?.confirmPassword)}
+            aria-describedby={
+              fieldErrors?.confirmPassword
+                ? "signup-confirm-error"
+                : undefined
+            }
           />
         </div>
+        {fieldErrors?.confirmPassword ? (
+          <p
+            id="signup-confirm-error"
+            className="text-sm font-medium text-destructive"
+            role="alert"
+          >
+            {fieldErrors.confirmPassword}
+          </p>
+        ) : null}
       </div>
 
       <Button type="submit" size="lg" className="w-full">
@@ -141,7 +221,13 @@ export function SignUpForm({ className, onSubmit }: SignUpFormProps) {
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <Button type="button" variant="outline" size="lg" className="w-full">
+        <Button
+          type="button"
+          variant="outline"
+          size="lg"
+          className="w-full"
+          onClick={oauthSoon}
+        >
           <Image
             src={GOOGLE_ICON}
             alt=""
@@ -152,7 +238,13 @@ export function SignUpForm({ className, onSubmit }: SignUpFormProps) {
           />
           گوگل
         </Button>
-        <Button type="button" variant="outline" size="lg" className="w-full">
+        <Button
+          type="button"
+          variant="outline"
+          size="lg"
+          className="w-full"
+          onClick={oauthSoon}
+        >
           <Apple className="size-5 text-foreground" aria-hidden />
           اپل
         </Button>

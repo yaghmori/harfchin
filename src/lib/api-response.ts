@@ -22,7 +22,9 @@ export function jsonErr(
 
 export function handleRouteError(error: unknown): NextResponse<ApiFailure> {
   if (error instanceof ZodError) {
-    return jsonErr("VALIDATION", "ورودی نامعتبر است.", 400);
+    const first = error.issues[0];
+    const message = first?.message ?? "ورودی نامعتبر است.";
+    return jsonErr("VALIDATION", message, 400);
   }
   if (error instanceof AppError) {
     return jsonErr(error.code, error.message, error.status);

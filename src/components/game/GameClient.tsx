@@ -2,9 +2,9 @@
 
 import { validateAnswerForLetter } from "@/domain/rules/answer-validation";
 import { SiteShell } from "@/components/layout/SiteShell";
+import { CategoryPlayerTabs } from "@/components/game/CategoryPlayerTabs";
 import { GameBottomNav } from "@/components/game/GameBottomNav";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -31,6 +31,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { useSyncErrorToToast } from "@/hooks/use-sync-error-toast";
 import type { LucideIcon } from "lucide-react";
 
 type AnswerRow = {
@@ -161,6 +162,8 @@ export function GameClient({ roomCode }: { roomCode: string }) {
   const [tick, setTick] = useState(0);
   const [form, setForm] = useState<Record<string, string>>({});
 
+  useSyncErrorToToast(error);
+
   const load = useCallback(async () => {
     try {
       const data = await apiGet<GamePayload>(
@@ -186,6 +189,12 @@ export function GameClient({ roomCode }: { roomCode: string }) {
     const id = setInterval(() => setTick((t) => t + 1), 1000);
     return () => clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    if (state?.phase === "finished" && state.game?.id) {
+      router.replace(`/results/${state.game.id}`);
+    }
+  }, [state?.phase, state?.game?.id, router]);
 
   const isHost = state?.hostUserId === state?.meUserId;
 
@@ -287,6 +296,16 @@ export function GameClient({ roomCode }: { roomCode: string }) {
           خانه
         </Button>
       </SiteShell>
+    );
+  }
+
+  if (state?.phase === "finished" && state.game) {
+    return (
+      <div className="flex min-h-dvh flex-col items-center justify-center bg-ka-surface px-5 text-ka-on-surface">
+        <p className="font-medium text-ka-on-surface-variant">
+          در حال انتقال به نتایج نهایی…
+        </p>
+      </div>
     );
   }
 
@@ -507,206 +526,154 @@ export function GameClient({ roomCode }: { roomCode: string }) {
     );
   }
 
-  return (
-    <SiteShell>
-      {error ? (
-        <Alert variant="destructive" className="mb-4">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      ) : null}
+  const showScoresInRound = phase !== "review";
 
-      <div className="mb-6 space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="font-heading text-sm font-bold text-ka-primary">
-              حرفچین
-            </p>
-            <p className="text-xs text-muted-foreground">
-              اتاق{" "}
-              <span className="font-mono font-semibold" dir="ltr">
-                {roomCode}
-              </span>{" "}
-              · دور {faDigits(round.roundNumber)} از {faDigits(game.totalRounds)}
-            </p>
+  return (
+    <div className="flex min-h-dvh flex-col bg-ka-surface pb-36 text-ka-on-surface">
+      <header className="sticky top-0 z-40 flex w-full items-center justify-between bg-white/80 px-5 py-4 shadow-[0_12px_32px_rgba(25,28,29,0.06)] backdrop-blur-xl dark:bg-zinc-950/80">
+        <div className="flex items-center gap-3">
+          <div
+            className="flex size-10 shrink-0 items-center justify-center rounded-full bg-ka-primary-fixed font-heading text-lg font-black text-ka-on-primary-fixed"
+            aria-hidden
+          >
+            {displayInitial}
           </div>
+          <span className="font-heading text-lg font-black tracking-tight text-ka-primary">
+            حرفچین
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5 rounded-full bg-ka-secondary-container px-3.5 py-1.5 font-heading text-sm font-semibold text-ka-on-secondary-container">
+          <span>{faDigits(myBoardScore)} امتیاز</span>
+          <Star className="size-4 fill-amber-600 text-amber-700" aria-hidden />
+        </div>
+      </header>
+
+      <main className="mx-auto w-full max-w-lg flex-1 space-y-5 px-5 pt-6">
+        {error ? (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        ) : null}
+
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-xs text-ka-on-surface-variant">
+            اتاق{" "}
+            <span className="font-mono font-semibold text-foreground" dir="ltr">
+              {roomCode}
+            </span>
+          </p>
           <div className="flex items-center gap-2 rounded-full bg-ka-primary-fixed/35 px-4 py-2 font-heading text-sm font-black text-ka-on-primary-fixed">
             <span>حرف</span>
             <span className="text-lg">{letter}</span>
           </div>
         </div>
+
         <Button
           render={<Link href={`/lobby/${roomCode}`} />}
           nativeButton={false}
           variant="link"
-          className="h-auto px-0 text-sm"
+          className="h-auto px-0 text-sm text-ka-on-surface-variant"
         >
           بازگشت به لابی
         </Button>
-      </div>
 
-      <section className="space-y-6 pb-8">
-        <h2 className="font-heading text-lg font-black text-foreground sm:text-xl">
-          پاسخ‌ها و امتیاز
-        </h2>
-        {g.categories.map((c) => {
-          const Icon = categoryIcon(c.key);
-          return (
-            <Card key={c.key} size="sm" className="border-ka-outline-variant/40">
-              <CardHeader className="flex flex-row items-center gap-2 pb-2">
-                <Icon className="size-5 text-ka-primary" aria-hidden />
-                <CardTitle className="text-base">{c.title}</CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <ul className="space-y-2.5">
-                  {answersForCategory(c.key).map(({ player, answer }) => {
-                    const dup =
-                      answer &&
-                      isDuplicate(
-                        c.key,
-                        answer.normalizedValue,
-                        answer.isValid,
-                      );
-                    return (
-                      <li
-                        key={player.id}
-                        className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-ka-outline-variant/30 bg-ka-surface-container-low/80 px-3 py-2.5 text-sm dark:bg-zinc-900/40"
-                      >
-                        <span className="font-semibold">
-                          {player.displayName}
-                        </span>
-                        <span className="text-end text-muted-foreground">
-                          <span className="text-foreground">
-                            {answer?.value || "—"}
-                          </span>
-                          {answer && !answer.isValid ? (
-                            <Badge variant="destructive" className="me-2 mt-1">
-                              نامعتبر
-                            </Badge>
-                          ) : null}
-                          {dup ? (
-                            <Badge
-                              variant="outline"
-                              className="me-2 mt-1 border-amber-500/55 bg-amber-500/10 text-amber-800 dark:text-amber-300"
-                            >
-                              تکراری
-                            </Badge>
-                          ) : null}
-                          {phase !== "review" && answer ? (
-                            <span
-                              className="ms-1 font-mono font-bold text-ka-primary"
-                              dir="ltr"
-                            >
-                              {faDigits(answer.score)}
-                            </span>
-                          ) : null}
-                        </span>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </CardContent>
-            </Card>
-          );
-        })}
+        <section className="space-y-4">
+          <div className="text-center">
+            <h1 className="font-heading text-xl font-black text-ka-on-surface sm:text-2xl">
+              نتیجه این دور
+            </h1>
+            <p className="mt-1 text-sm font-medium text-ka-on-surface-variant">
+              دور {faDigits(round.roundNumber)} از {faDigits(game.totalRounds)}
+            </p>
+          </div>
 
-        <Card className="overflow-hidden border-ka-outline-variant/40 py-0">
-          <CardHeader className="border-b border-ka-outline-variant/30 bg-ka-primary-fixed/25 py-3 dark:bg-ka-primary-fixed/10">
-            <CardTitle className="font-heading text-base text-ka-primary">
-              جدول امتیاز
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="py-4">
-            <ol className="space-y-2">
-              {g.leaderboard.map((row, i) => {
-                const medal =
-                  i === 0
-                    ? "🥇"
-                    : i === 1
-                      ? "🥈"
-                      : i === 2
-                        ? "🥉"
-                        : null;
-                const isMe = row.roomPlayerId === g.meRoomPlayerId;
-                return (
-                  <li
-                    key={row.roomPlayerId}
-                    className={
-                      isMe
-                        ? "flex items-center justify-between gap-2 rounded-2xl border-2 border-ka-secondary-container bg-ka-secondary-container/15 px-3 py-2 text-sm shadow-sm"
-                        : "flex items-center justify-between gap-2 rounded-2xl border border-ka-outline-variant/30 bg-card px-3 py-2 text-sm shadow-sm"
-                    }
-                  >
-                    <span className="flex min-w-0 items-center gap-2">
-                      {medal ? (
-                        <span className="text-lg" aria-hidden>
-                          {medal}
-                        </span>
-                      ) : (
-                        <span
-                          className="w-6 text-center font-mono text-xs text-muted-foreground"
-                          dir="ltr"
-                        >
-                          {faDigits(i + 1)}
-                        </span>
-                      )}
-                      <span className="truncate font-semibold">
-                        {row.displayName}
-                        {isMe ? (
-                          <span className="me-1 text-xs text-ka-primary">
-                            (شما)
-                          </span>
-                        ) : null}
-                      </span>
-                    </span>
-                    <span
-                      className="shrink-0 font-mono text-base font-bold text-ka-primary"
-                      dir="ltr"
+          <Card className="border-ka-outline-variant/40 ka-kinetic-shadow">
+            <CardHeader className="flex flex-row items-start justify-between gap-2 pb-2">
+              <div>
+                <CardTitle className="font-heading text-base text-ka-primary">
+                  جزئیات پاسخ‌ها
+                </CardTitle>
+                <p className="mt-0.5 text-xs text-ka-on-surface-variant">
+                  برای هر ردیف بازیکن را انتخاب کنید
+                </p>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-0 pt-0">
+              <ul className="divide-y divide-ka-outline-variant/35">
+                {g.categories.map((c) => {
+                  const Icon = categoryIcon(c.key);
+                  return (
+                    <li
+                      key={c.key}
+                      className="flex flex-col gap-3 py-4 first:pt-0 sm:flex-row sm:items-start sm:gap-4"
                     >
-                      {faDigits(row.totalScore)}
-                    </span>
-                  </li>
-                );
-              })}
-            </ol>
-          </CardContent>
-        </Card>
+                      <span className="flex shrink-0 items-center gap-2.5 sm:w-[40%]">
+                        <Icon
+                          className="size-5 shrink-0 text-ka-primary"
+                          aria-hidden
+                        />
+                        <span className="text-xs font-bold text-ka-on-surface-variant">
+                          {c.title}
+                        </span>
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <CategoryPlayerTabs
+                          players={g.players}
+                          categoryKey={c.key}
+                          meRoomPlayerId={g.meRoomPlayerId}
+                          showScores={showScoresInRound}
+                          isDuplicate={isDuplicate}
+                        />
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </CardContent>
+          </Card>
 
-        {phase === "review" && isHost ? (
-          <Button
-            type="button"
-            variant="default"
-            onClick={() => void scoreRound()}
-            disabled={busy}
-            className="w-full"
-          >
-            محاسبه امتیاز دور
-          </Button>
-        ) : null}
+          {phase === "review" && !isHost ? (
+            <p className="text-center text-sm text-ka-on-surface-variant">
+              منتظر محاسبه امتیاز توسط میزبان…
+            </p>
+          ) : null}
+          {phase === "between" && !isHost ? (
+            <p className="text-center text-sm text-ka-on-surface-variant">
+              منتظر شروع دور بعد توسط میزبان…
+            </p>
+          ) : null}
 
-        {phase === "between" && isHost ? (
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => void nextRound()}
-            disabled={busy}
-            className="w-full"
-          >
-            دور بعد / پایان بازی
-          </Button>
-        ) : null}
+          <div className="flex flex-col gap-3 pt-2">
+            {phase === "review" && isHost ? (
+              <Button
+                type="button"
+                variant="default"
+                onClick={() => void scoreRound()}
+                disabled={busy}
+                className="ka-kinetic-shadow-lg h-auto w-full rounded-full py-5 font-heading text-base font-black"
+              >
+                محاسبه امتیاز دور
+              </Button>
+            ) : null}
 
-        {phase === "finished" ? (
-          <Button
-            render={<Link href={`/results/${game.id}`} />}
-            nativeButton={false}
-            variant="default"
-            className="w-full gap-2"
-          >
-            <Sparkles className="size-4" aria-hidden />
-            صفحه نتایج نهایی
-          </Button>
-        ) : null}
-      </section>
-    </SiteShell>
+            {phase === "between" && isHost ? (
+              <Button
+                type="button"
+                variant="default"
+                onClick={() => void nextRound()}
+                disabled={busy}
+                className="ka-kinetic-shadow-lg h-auto w-full rounded-full py-5 font-heading text-base font-black"
+              >
+                دور بعد
+              </Button>
+            ) : null}
+          </div>
+        </section>
+      </main>
+
+      <div className="fixed bottom-0 left-0 z-50 w-full">
+        <GameBottomNav active="game" />
+      </div>
+    </div>
   );
 }

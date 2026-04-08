@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSyncErrorToToast } from "@/hooks/use-sync-error-toast";
 
 type ListPayload = { rooms: DirectoryRoom[] };
 
@@ -101,6 +102,8 @@ export function RoomListClient() {
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<FilterChip>("all");
+
+  useSyncErrorToToast(error);
 
   const load = useCallback(async () => {
     try {

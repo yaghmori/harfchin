@@ -9,22 +9,34 @@ import { Apple, Lock, LogIn, Mail } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import * as React from "react";
+import { toast } from "sonner";
 
 const GOOGLE_ICON =
   "https://lh3.googleusercontent.com/aida-public/AB6AXuAukGmyZ5uZ5aU3pyMOe4uoP4nlpAHO5IFF8bw_QBGiiUg7LmCkY8DnRRPX0knwMdDl7xtguK-_5Q576RTRpyz0luWiccy5KMIT3bcK-a8avnTf3REf9Rd7Nu4m6AqSn3KnZZQAOsDYvfTF2kk4GhSCSOXguqulZBAJevn3Jtk4zq1zEy2sEL1AY858bfmXoSy2Ez0kYGY1-dohqtLb7Yk0nYkO55CAqPq-Xu1t8se4uOuChSqDydAHiVR7jpYf5XUzcOP9A522LG8";
 
 type LoginFormProps = {
   className?: string;
+  fieldErrors?: Partial<Record<"identifier" | "password", string>>;
+  onFieldChange?: (field: "identifier" | "password") => void;
   onSubmit?: (data: { identifier: string; password: string }) => void;
 };
 
-export function LoginForm({ className, onSubmit }: LoginFormProps) {
+export function LoginForm({
+  className,
+  fieldErrors,
+  onFieldChange,
+  onSubmit,
+}: LoginFormProps) {
   const [identifier, setIdentifier] = React.useState("");
   const [password, setPassword] = React.useState("");
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     onSubmit?.({ identifier, password });
+  }
+
+  function oauthSoon() {
+    toast.info("ورود با گوگل و اپل به‌زودی فعال می‌شود.");
   }
 
   return (
@@ -51,11 +63,27 @@ export function LoginForm({ className, onSubmit }: LoginFormProps) {
             type="email"
             autoComplete="email"
             value={identifier}
-            onChange={(e) => setIdentifier(e.target.value)}
+            onChange={(e) => {
+              setIdentifier(e.target.value);
+              onFieldChange?.("identifier");
+            }}
             placeholder="مثلاً user@email.com"
             className="ps-11"
+            aria-invalid={Boolean(fieldErrors?.identifier)}
+            aria-describedby={
+              fieldErrors?.identifier ? "login-identifier-error" : undefined
+            }
           />
         </div>
+        {fieldErrors?.identifier ? (
+          <p
+            id="login-identifier-error"
+            className="text-sm font-medium text-destructive"
+            role="alert"
+          >
+            {fieldErrors.identifier}
+          </p>
+        ) : null}
       </div>
 
       <div className="space-y-2">
@@ -76,11 +104,27 @@ export function LoginForm({ className, onSubmit }: LoginFormProps) {
             type="password"
             autoComplete="current-password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              onFieldChange?.("password");
+            }}
             placeholder="••••••••"
             className="ps-11"
+            aria-invalid={Boolean(fieldErrors?.password)}
+            aria-describedby={
+              fieldErrors?.password ? "login-password-error" : undefined
+            }
           />
         </div>
+        {fieldErrors?.password ? (
+          <p
+            id="login-password-error"
+            className="text-sm font-medium text-destructive"
+            role="alert"
+          >
+            {fieldErrors.password}
+          </p>
+        ) : null}
         <div className="text-start">
           <Link
             href="#"
@@ -108,7 +152,13 @@ export function LoginForm({ className, onSubmit }: LoginFormProps) {
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <Button type="button" variant="outline" size="lg" className="w-full">
+        <Button
+          type="button"
+          variant="outline"
+          size="lg"
+          className="w-full"
+          onClick={oauthSoon}
+        >
           <Image
             src={GOOGLE_ICON}
             alt=""
@@ -119,7 +169,13 @@ export function LoginForm({ className, onSubmit }: LoginFormProps) {
           />
           گوگل
         </Button>
-        <Button type="button" variant="outline" size="lg" className="w-full">
+        <Button
+          type="button"
+          variant="outline"
+          size="lg"
+          className="w-full"
+          onClick={oauthSoon}
+        >
           <Apple className="size-5 text-foreground" aria-hidden />
           اپل
         </Button>

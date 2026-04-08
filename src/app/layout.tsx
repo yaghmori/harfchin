@@ -1,3 +1,4 @@
+import { AppProviders } from "@/components/providers/AppProviders";
 import { cn } from "@/lib/utils";
 import type { Metadata } from "next";
 import { Vazirmatn } from "next/font/google";
@@ -24,9 +25,10 @@ export default function RootLayout({
       lang="fa"
       dir="rtl"
       className={cn("h-full", vazirmatn.variable)}
+      suppressHydrationWarning
     >
       <body className="min-h-full bg-background font-sans text-foreground antialiased">
-        {children}
+        <AppProviders>{children}</AppProviders>
       </body>
     </html>
   );

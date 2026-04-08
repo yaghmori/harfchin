@@ -2,13 +2,28 @@
 
 import { SignUpForm } from "@/components/auth/SignUpForm";
 import { apiPost } from "@/features/api/client";
+import { signupBodySchema } from "@/lib/validation/auth";
+import { fieldErrorsFromZodIssues } from "@/lib/zod-field-errors";
 import { useRouter } from "next/navigation";
 import * as React from "react";
+import { toast } from "sonner";
+
+type FieldKey = "name" | "email" | "password" | "confirmPassword";
 
 export function AuthSignUpClient() {
   const router = useRouter();
-  const [error, setError] = React.useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = React.useState<
+    Partial<Record<FieldKey, string>>
+  >({});
   const [pending, setPending] = React.useState(false);
+
+  function clearField(field: FieldKey) {
+    setFieldErrors((prev) => {
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  }
 
   async function onSubmit(data: {
     name: string;
@@ -16,38 +31,41 @@ export function AuthSignUpClient() {
     password: string;
     confirmPassword: string;
   }) {
-    setError(null);
+    setFieldErrors({});
+    const parsed = signupBodySchema.safeParse({
+      email: data.email.trim(),
+      password: data.password,
+      confirmPassword: data.confirmPassword,
+      name: data.name.trim(),
+    });
+    if (!parsed.success) {
+      setFieldErrors(fieldErrorsFromZodIssues(parsed.error.issues));
+      const first = parsed.error.issues[0]?.message;
+      toast.error(first ?? "ورودی‌ها را بررسی کنید.");
+      return;
+    }
+
     setPending(true);
     try {
-      await apiPost("/api/auth/signup", {
-        email: data.email.trim(),
-        password: data.password,
-        confirmPassword: data.confirmPassword,
-        name: data.name.trim(),
-      });
+      await apiPost("/api/auth/signup", parsed.data);
+      toast.success("ثبت‌نام با موفقیت انجام شد.");
       router.push("/profile");
       router.refresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "ثبت‌نام ناموفق بود.");
+      const msg =
+        e instanceof Error ? e.message : "ثبت‌نام ناموفق بود.";
+      toast.error(msg);
     } finally {
       setPending(false);
     }
   }
 
   return (
-    <div className="w-full space-y-4">
-      {error ? (
-        <p
-          className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-center text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200"
-          role="alert"
-        >
-          {error}
-        </p>
-      ) : null}
-      <SignUpForm
-        onSubmit={onSubmit}
-        className={pending ? "pointer-events-none opacity-70" : undefined}
-      />
-    </div>
+    <SignUpForm
+      fieldErrors={fieldErrors}
+      onFieldChange={clearField}
+      onSubmit={onSubmit}
+      className={pending ? "pointer-events-none opacity-70" : undefined}
+    />
   );
 }
