@@ -59,7 +59,7 @@ export async function createRoom(params: {
     Math.max(2, params.maxPlayers ?? 8),
   );
   const draftTotalRounds = Math.min(
-    20,
+    30,
     Math.max(1, params.draftTotalRounds ?? 5),
   );
   const draftRoundTimeSec = Math.min(
@@ -181,7 +181,7 @@ export async function updateRoomSettings(params: {
     maxPlayers?: number;
   } = {};
   if (params.draftTotalRounds !== undefined) {
-    data.draftTotalRounds = Math.min(20, Math.max(1, params.draftTotalRounds));
+    data.draftTotalRounds = Math.min(30, Math.max(1, params.draftTotalRounds));
   }
   if (params.draftRoundTimeSec !== undefined) {
     data.draftRoundTimeSec = Math.min(600, Math.max(30, params.draftRoundTimeSec));

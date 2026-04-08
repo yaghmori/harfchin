@@ -17,7 +17,7 @@ export const createRoomBodySchema = z.object({
   displayName: z.string().min(1).max(MAX_DISPLAY_NAME_LENGTH).optional(),
   isPrivate: z.boolean().optional(),
   maxPlayers: z.number().int().min(2).max(16).optional(),
-  draftTotalRounds: z.number().int().min(1).max(20).optional(),
+  draftTotalRounds: z.number().int().min(1).max(30).optional(),
   draftRoundTimeSec: z.number().int().min(30).max(600).optional(),
 });
 
@@ -37,7 +37,7 @@ export const roomCodeBodySchema = z.object({
 
 export const settingsBodySchema = z.object({
   roomCode: roomCodeSchema,
-  draftTotalRounds: z.number().int().min(1).max(20).optional(),
+  draftTotalRounds: z.number().int().min(1).max(30).optional(),
   draftRoundTimeSec: z.number().int().min(30).max(600).optional(),
   maxPlayers: z.number().int().min(2).max(16).optional(),
 });

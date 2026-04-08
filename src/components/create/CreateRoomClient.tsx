@@ -1,26 +1,29 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import {
-  ChevronDown,
-  CirclePlus,
-  Globe,
-  ListOrdered,
-  Lock,
-  Timer,
-  Users,
-} from "lucide-react";
+import { CirclePlus, Globe, ListOrdered, Lock, Timer, Users } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { apiPost } from "@/features/api/client";
 import { useSyncErrorToToast } from "@/hooks/use-sync-error-toast";
 import { faDigits } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const ROUND_OPTIONS = [
+  { value: 1, label: `${faDigits(1)} دور` },
+  { value: 2, label: `${faDigits(2)} دور` },
+  { value: 3, label: `${faDigits(3)} دور` },
   { value: 5, label: `${faDigits(5)} دور` },
   { value: 10, label: `${faDigits(10)} دور` },
-  { value: 15, label: `${faDigits(15)} دور (طولانی)` },
+  { value: 15, label: `${faDigits(15)} دور` },
+  { value: 30, label: `${faDigits(30)} دور (طولانی)` },
 ] as const;
 
 const TIME_OPTIONS = [
@@ -28,6 +31,12 @@ const TIME_OPTIONS = [
   { value: 90, label: `${faDigits(90)} ثانیه` },
   { value: 120, label: `${faDigits(2)} دقیقه` },
 ] as const;
+
+type RoundChoice = (typeof ROUND_OPTIONS)[number]["value"];
+type TimeChoice = (typeof TIME_OPTIONS)[number]["value"];
+
+const selectTriggerClass =
+  "h-auto min-h-12 w-full rounded-full border-0 bg-ka-surface-container-lowest px-6 py-3 font-bold text-ka-on-surface shadow-none focus-visible:ring-2 focus-visible:ring-ka-primary/20 data-placeholder:text-ka-outline";
 
 const MIN_PLAYERS = 2;
 const MAX_PLAYERS_UI = 12;
@@ -37,12 +46,8 @@ export function CreateRoomClient() {
   const [roomTitle, setRoomTitle] = useState("");
   const [isPublic, setIsPublic] = useState(true);
   const [maxPlayers, setMaxPlayers] = useState(8);
-  const [rounds, setRounds] = useState<(typeof ROUND_OPTIONS)[number]["value"]>(
-    5,
-  );
-  const [seconds, setSeconds] = useState<(typeof TIME_OPTIONS)[number]["value"]>(
-    60,
-  );
+  const [rounds, setRounds] = useState<RoundChoice>(5);
+  const [seconds, setSeconds] = useState<TimeChoice>(60);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -184,58 +189,79 @@ export function CreateRoomClient() {
               <div className="space-y-4 rounded-lg bg-ka-surface-container-low p-6">
                 <div className="flex items-center gap-2">
                   <ListOrdered className="size-6 text-ka-primary" aria-hidden />
-                  <span className="font-bold text-ka-on-surface">
-                    تعداد دورها
-                  </span>
-                </div>
-                <div className="relative">
-                  <select
-                    value={rounds}
-                    disabled={loading}
-                    onChange={(e) =>
-                      setRounds(Number(e.target.value) as typeof rounds)
-                    }
-                    className="w-full cursor-pointer appearance-none rounded-full border-none bg-ka-surface-container-lowest px-6 py-3 ps-10 font-bold text-ka-on-surface focus:ring-2 focus:ring-ka-primary/20 focus:outline-none disabled:opacity-60"
+                  <label
+                    id="create-room-rounds-label"
+                    htmlFor="create-room-rounds"
+                    className="font-bold text-ka-on-surface"
                   >
-                    {ROUND_OPTIONS.map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-ka-outline" aria-hidden />
+                    تعداد دورها
+                  </label>
                 </div>
+                <Select
+                  value={String(rounds)}
+                  onValueChange={(v) => setRounds(Number(v) as RoundChoice)}
+                  disabled={loading}
+                >
+                  <SelectTrigger
+                    id="create-room-rounds"
+                    aria-labelledby="create-room-rounds-label"
+                    className={selectTriggerClass}
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent dir="rtl" className="border-ka-outline-variant/30">
+                    {ROUND_OPTIONS.map((o) => (
+                      <SelectItem
+                        key={o.value}
+                        value={String(o.value)}
+                        className="font-semibold"
+                      >
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-4 rounded-lg bg-ka-surface-container-low p-6">
                 <div className="flex items-center gap-2">
                   <Timer className="size-6 text-ka-primary" aria-hidden />
-                  <span className="font-bold text-ka-on-surface">
-                    زمان هر دور
-                  </span>
-                </div>
-                <div className="relative">
-                  <select
-                    value={seconds}
-                    disabled={loading}
-                    onChange={(e) =>
-                      setSeconds(Number(e.target.value) as typeof seconds)
-                    }
-                    className="w-full cursor-pointer appearance-none rounded-full border-none bg-ka-surface-container-lowest px-6 py-3 ps-10 font-bold text-ka-on-surface focus:ring-2 focus:ring-ka-primary/20 focus:outline-none disabled:opacity-60"
+                  <label
+                    id="create-room-time-label"
+                    htmlFor="create-room-time"
+                    className="font-bold text-ka-on-surface"
                   >
-                    {TIME_OPTIONS.map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-ka-outline" aria-hidden />
+                    زمان هر دور
+                  </label>
                 </div>
+                <Select
+                  value={String(seconds)}
+                  onValueChange={(v) => setSeconds(Number(v) as TimeChoice)}
+                  disabled={loading}
+                >
+                  <SelectTrigger
+                    id="create-room-time"
+                    aria-labelledby="create-room-time-label"
+                    className={selectTriggerClass}
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent dir="rtl" className="border-ka-outline-variant/30">
+                    {TIME_OPTIONS.map((o) => (
+                      <SelectItem
+                        key={o.value}
+                        value={String(o.value)}
+                        className="font-semibold"
+                      >
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </section>
         </form>
-
       </main>
 
       <footer className="fixed bottom-21 left-0 right-0 z-40 bg-linear-to-t from-ka-background via-ka-background/95 to-transparent px-4 pb-2 pt-4 sm:px-6">
