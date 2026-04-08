@@ -7,7 +7,7 @@ import { AuthLoginClient } from "@/components/auth/AuthLoginClient";
 import { getSessionUser } from "@/server/session";
 
 export const metadata: Metadata = {
-  title: "ورود | حرفچی",
+  title: "ورود",
 };
 
 export default async function LoginPage() {

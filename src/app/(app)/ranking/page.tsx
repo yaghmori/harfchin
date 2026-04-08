@@ -5,7 +5,7 @@ import { Trophy } from "lucide-react";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "رده‌بندی | حرفچین",
+  title: "رده‌بندی",
 };
 
 export default function RankingPage() {

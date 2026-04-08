@@ -11,7 +11,10 @@ const vazirmatn = Vazirmatn({
 });
 
 export const metadata: Metadata = {
-  title: "حرفچین — اسم و فامیل آنلاین",
+  title: {
+    default: "حرفچی",
+    template: "%s · حرفچی",
+  },
   description: "بازی چندنفره اسم و فامیل با حروف فارسی",
 };
 

@@ -5,7 +5,7 @@ import { getProfileForUser } from "@/server/services/profile.service";
 import { getSessionUser } from "@/server/session";
 
 export const metadata: Metadata = {
-  title: "پروفایل کاربری | حرفچین",
+  title: "پروفایل کاربری",
 };
 
 export default async function ProfilePage() {

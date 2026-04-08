@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
 import { SectionHeader } from "@/components/home/SectionHeader";
 import { StatCard } from "@/components/home/StatCard";
 import type { DirectoryRoom } from "@/lib/room-directory";
@@ -42,6 +43,8 @@ type HomeDashboardProps = {
   level: number;
   coins: number;
   rooms: DirectoryRoom[];
+  /** Registered account (email user) — unlocks FAB, profile tab, saved stats messaging */
+  isRegistered: boolean;
 };
 
 export function HomeDashboard({
@@ -49,6 +52,7 @@ export function HomeDashboard({
   level,
   coins,
   rooms,
+  isRegistered,
 }: HomeDashboardProps) {
   const levelStr = formatFaInt(level);
   const coinsStr = `${formatFaInt(coins)} سکه`;
@@ -63,6 +67,35 @@ export function HomeDashboard({
           آماده‌ای برای رقابت امروز؟
         </p>
       </section>
+
+      {!isRegistered ? (
+        <section className="rounded-3xl border border-violet-200/90 bg-linear-to-br from-violet-50 via-white to-violet-50/80 p-4 shadow-[var(--game-shadow-sm)] dark:border-violet-900/50 dark:from-violet-950/40 dark:via-zinc-900 dark:to-violet-950/30">
+          <p className="text-sm font-semibold leading-relaxed text-foreground">
+            ورود یا ثبت‌نام کنید تا امتیاز، سطح و تاریخچه بازی‌هاتان همیشه ذخیره
+            بماند و بین گوشی و مرورگر همراهتان باشد.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link
+              href="/login?from=/"
+              className={cn(
+                buttonVariants({ size: "lg" }),
+                "min-h-11 flex-1 rounded-full px-5 font-bold sm:flex-none",
+              )}
+            >
+              ورود
+            </Link>
+            <Link
+              href="/signup?from=/"
+              className={cn(
+                buttonVariants({ variant: "outline", size: "lg" }),
+                "min-h-11 flex-1 rounded-full border-violet-200 bg-white/80 px-5 font-bold text-[#7E3AF2] sm:flex-none dark:border-violet-800 dark:bg-zinc-950/60",
+              )}
+            >
+              ثبت‌نام
+            </Link>
+          </div>
+        </section>
+      ) : null}
 
       <div className="flex gap-3">
         <StatCard
@@ -114,10 +147,29 @@ export function HomeDashboard({
         <ul className="flex flex-col gap-3">
           {rooms.length === 0 ? (
             <li className="rounded-2xl border border-dashed border-violet-200/80 bg-violet-50/50 px-4 py-8 text-center text-sm text-muted-foreground dark:border-violet-900/50 dark:bg-violet-950/20">
-              هنوز اتاق فعالی نیست.{" "}
-              <Link href="/create" className="font-bold text-[#7E3AF2] underline-offset-2 hover:underline">
-                اولین اتاق را بسازید
-              </Link>
+              هنوز اتاق فعالی نیست.
+              {isRegistered ? (
+                <>
+                  {" "}
+                  <Link
+                    href="/create"
+                    className="font-bold text-[#7E3AF2] underline-offset-2 hover:underline"
+                  >
+                    اولین اتاق را بسازید
+                  </Link>
+                </>
+              ) : (
+                <>
+                  {" "}
+                  <Link
+                    href="/login?from=/"
+                    className="font-bold text-[#7E3AF2] underline-offset-2 hover:underline"
+                  >
+                    با ورود
+                  </Link>{" "}
+                  می‌توانید اتاق بسازید و رکوردتان ذخیره شود.
+                </>
+              )}
             </li>
           ) : (
             rooms.map((room, i) => {
@@ -219,13 +271,15 @@ export function HomeDashboard({
         </p>
       </section>
 
-      <Link
-        href="/create"
-        className="fixed bottom-24 end-4 z-40 flex size-14 items-center justify-center rounded-full bg-[#7E3AF2] text-white shadow-[0_12px_28px_rgba(126,58,242,0.45)] transition-transform hover:scale-105 active:scale-95 dark:bg-violet-600"
-        aria-label="ساخت اتاق جدید"
-      >
-        <Plus className="size-7 stroke-[2.5]" aria-hidden />
-      </Link>
+      {isRegistered ? (
+        <Link
+          href="/create"
+          className="fixed bottom-24 end-4 z-40 flex size-14 items-center justify-center rounded-full bg-[#7E3AF2] text-white shadow-[0_12px_28px_rgba(126,58,242,0.45)] transition-transform hover:scale-105 active:scale-95 dark:bg-violet-600"
+          aria-label="ساخت اتاق جدید"
+        >
+          <Plus className="size-7 stroke-[2.5]" aria-hidden />
+        </Link>
+      ) : null}
     </div>
   );
 }

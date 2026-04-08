@@ -6,7 +6,7 @@ import { AuthSignUpClient } from "@/components/auth/AuthSignUpClient";
 import { getSessionUser } from "@/server/session";
 
 export const metadata: Metadata = {
-  title: "ثبت‌نام | Kinetic Air",
+  title: "ثبت‌نام",
 };
 
 export default async function SignUpPage() {

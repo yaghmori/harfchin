@@ -27,6 +27,7 @@ export default async function HomePage() {
       level={level}
       coins={coins}
       rooms={previewRooms}
+      isRegistered={Boolean(profile)}
     />
   );
 }

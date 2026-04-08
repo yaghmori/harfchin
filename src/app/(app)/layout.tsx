@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/layout/AppShell";
+import { resolveShellAuthMode } from "@/components/layout/shell-auth";
 import { getSessionUser } from "@/server/session";
 
 export default async function AppLayout({
@@ -7,21 +8,33 @@ export default async function AppLayout({
   children: React.ReactNode;
 }) {
   const user = await getSessionUser();
-  const isRegistered = Boolean(
-    user?.email && !user.isGuest && user.passwordHash,
-  );
+  const authMode = resolveShellAuthMode(user);
+
   const displayName = user?.name?.trim() ?? "";
   const userInitial =
-    displayName.length > 0
-      ? displayName.charAt(0)
-      : user
-        ? "ب"
-        : "?";
+    authMode === "anonymous"
+      ? "?"
+      : displayName.length > 0
+        ? displayName.charAt(0)
+        : authMode === "guest"
+          ? "م"
+          : user?.email?.charAt(0) ?? "?";
+
+  const bottomNavAccount =
+    authMode === "registered"
+      ? {
+          href: "/profile",
+          label: "پروفایل",
+          variant: "profile" as const,
+          prefixes: ["/profile"] as const,
+        }
+      : undefined;
 
   return (
     <AppShell
-      profileHref={isRegistered ? "/profile" : "/login"}
+      authMode={authMode}
       userInitial={userInitial}
+      bottomNavAccount={bottomNavAccount}
     >
       {children}
     </AppShell>

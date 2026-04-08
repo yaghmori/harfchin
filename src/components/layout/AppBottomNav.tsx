@@ -1,50 +1,84 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { Home, LayoutGrid, Trophy, UserRound } from "lucide-react";
+import { Home, LayoutGrid, LogIn, Trophy, UserRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { LucideIcon } from "lucide-react";
 
-const NAV_ITEMS = [
-  { href: "/", label: "خانه", icon: Home, match: "exact" as const },
+type MatchKind = "exact" | "prefix" | "rooms" | "account";
+
+type NavItem = {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  match: MatchKind;
+  accountPrefixes?: readonly string[];
+};
+
+const BASE_ITEMS: NavItem[] = [
+  { href: "/", label: "خانه", icon: Home, match: "exact" },
   {
     href: "/rooms",
     label: "اتاق بازی",
     icon: LayoutGrid,
-    match: "rooms" as const,
+    match: "rooms",
   },
   {
     href: "/ranking",
     label: "رتبه‌بندی",
     icon: Trophy,
-    match: "prefix" as const,
+    match: "prefix",
   },
-  {
-    href: "/profile",
-    label: "پروفایل",
-    icon: UserRound,
-    match: "prefix" as const,
-  },
-] as const;
+];
 
-function isNavActive(
-  pathname: string,
-  href: string,
-  match: (typeof NAV_ITEMS)[number]["match"],
-): boolean {
-  if (match === "exact") return pathname === href;
-  if (match === "prefix")
-    return pathname === href || pathname.startsWith(`${href}/`);
-  return (
-    pathname.startsWith("/rooms") ||
-    pathname.startsWith("/create") ||
-    pathname.startsWith("/join") ||
-    pathname.startsWith("/lobby")
-  );
+function isNavActive(pathname: string, item: NavItem): boolean {
+  if (item.match === "exact") return pathname === item.href;
+  if (item.match === "prefix")
+    return pathname === item.href || pathname.startsWith(`${item.href}/`);
+  if (item.match === "rooms") {
+    return (
+      pathname.startsWith("/rooms") ||
+      pathname.startsWith("/create") ||
+      pathname.startsWith("/join") ||
+      pathname.startsWith("/lobby")
+    );
+  }
+  if (item.match === "account" && item.accountPrefixes) {
+    return item.accountPrefixes.some(
+      (p) => pathname === p || pathname.startsWith(`${p}/`),
+    );
+  }
+  return false;
 }
 
-export function AppBottomNav() {
+export type BottomNavAccountTab = {
+  href: string;
+  label: string;
+  variant: "profile" | "login";
+  prefixes: readonly string[];
+};
+
+export type AppBottomNavProps = {
+  /** Omitted when user is not logged in (registered) — fourth tab hidden */
+  account?: BottomNavAccountTab;
+};
+
+export function AppBottomNav({ account }: AppBottomNavProps) {
   const pathname = usePathname();
+
+  const items: NavItem[] = account
+    ? [
+        ...BASE_ITEMS,
+        {
+          href: account.href,
+          label: account.label,
+          icon: account.variant === "login" ? LogIn : UserRound,
+          match: "account" as const,
+          accountPrefixes: account.prefixes,
+        },
+      ]
+    : [...BASE_ITEMS];
 
   return (
     <nav
@@ -56,12 +90,13 @@ export function AppBottomNav() {
       dir="rtl"
     >
       <div className="mx-auto flex max-w-lg items-stretch justify-around sm:max-w-3xl">
-        {NAV_ITEMS.map(({ href, label, icon: Icon, match }) => {
-          const active = isNavActive(pathname, href, match);
+        {items.map((item) => {
+          const active = isNavActive(pathname, item);
+          const Icon = item.icon;
           return (
             <Link
-              key={href}
-              href={href}
+              key={`${item.href}-${item.label}`}
+              href={item.href}
               className={cn(
                 "flex min-w-[4.25rem] flex-col items-center gap-0.5 rounded-2xl px-2 py-1.5 transition-colors",
                 active
@@ -80,7 +115,7 @@ export function AppBottomNav() {
                 <Icon className="size-[22px]" aria-hidden strokeWidth={2} />
               </span>
               <span className="text-[10px] font-bold leading-tight">
-                {label}
+                {item.label}
               </span>
             </Link>
           );
