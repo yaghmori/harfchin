@@ -76,17 +76,18 @@ model RoomChatMessage {
 }
 
 model RoomPlayer {
-  id          String        @id @default(uuid())
+  id          String             @id @default(uuid())
   roomId      String
-  room        Room          @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  room        Room               @relation(fields: [roomId], references: [id], onDelete: Cascade)
   userId      String
-  user        User          @relation(fields: [userId], references: [id])
+  user        User               @relation(fields: [userId], references: [id])
   displayName String
-  isHost      Boolean       @default(false)
-  isReady     Boolean       @default(false)
-  joinedAt    DateTime      @default(now())
+  isHost      Boolean            @default(false)
+  isReady     Boolean            @default(false)
+  joinedAt    DateTime           @default(now())
   answers     RoundAnswer[]
   scores      PlayerScore[]
+  roundReadies RoundPlayerReady[]
 
   @@unique([roomId, userId])
   @@index([roomId])
@@ -109,18 +110,32 @@ model Game {
 }
 
 model Round {
-  id          String        @id @default(uuid())
+  id          String             @id @default(uuid())
   gameId      String
-  game        Game          @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  game        Game               @relation(fields: [gameId], references: [id], onDelete: Cascade)
   roundNumber Int
   letter      String
-  status      RoundStatus   @default(active)
-  startedAt   DateTime      @default(now())
+  status      RoundStatus        @default(active)
+  startedAt   DateTime           @default(now())
   endedAt     DateTime?
   answers     RoundAnswer[]
+  playerReadies RoundPlayerReady[]
 
   @@unique([gameId, roundNumber])
   @@index([gameId])
+}
+
+/** Marks that a player tapped «done» for this round (all categories filled). */
+model RoundPlayerReady {
+  id           String     @id @default(uuid())
+  roundId      String
+  round        Round      @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  roomPlayerId String
+  roomPlayer   RoomPlayer @relation(fields: [roomPlayerId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+
+  @@unique([roundId, roomPlayerId])
+  @@index([roundId])
 }
 
 model Category {

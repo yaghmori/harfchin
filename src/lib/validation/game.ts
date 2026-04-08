@@ -11,6 +11,18 @@ export const submitAnswersSchema = z.object({
   ),
 });
 
+export const completeRoundSchema = z.object({
+  roomCode: roomCodeSchema,
+  answers: z
+    .array(
+      z.object({
+        categoryKey: z.string().min(1),
+        value: z.string(),
+      }),
+    )
+    .default([]),
+});
+
 export const gameStateQuerySchema = z
   .object({
     roomCode: roomCodeSchema.optional(),

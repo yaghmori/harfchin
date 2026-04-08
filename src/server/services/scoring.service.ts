@@ -8,21 +8,22 @@ import { assertRoundCanScore } from "@/server/rules/game-transitions";
 import { AppError } from "@/lib/errors";
 import { emitRoomUpdate } from "@/server/realtime/room-events";
 
-export async function scoreCurrentRound(roomCode: string, hostUserId: string) {
-  const room = await prisma.room.findUnique({
-    where: { code: roomCode.toUpperCase() },
+/**
+ * Applies per-category scoring for a round in `review` and sets round to `scored`.
+ * Server-only; does not enforce host (used by automated round completion).
+ */
+export async function applyScoresForRound(params: {
+  gameId: string;
+  roundId: string;
+  roomCode: string;
+}): Promise<{ alreadyScored: true; roundId: string } | { alreadyScored: false; roundId: string }> {
+  const round = await prisma.round.findUnique({
+    where: { id: params.roundId },
   });
-  if (!room) throw new AppError("NOT_FOUND", "اتاق پیدا نشد.");
-
-  if (room.hostId !== hostUserId) {
-    throw new AppError("FORBIDDEN", "فقط میزبان می‌تواند امتیازدهی کند.");
+  if (!round) throw new AppError("NOT_FOUND", "دور پیدا نشد.");
+  if (round.gameId !== params.gameId) {
+    throw new AppError("BAD_STATE", "عدم تطابق بازی و دور.");
   }
-
-  const game = await gameRepo.findLatestActiveGameForRoom(room.id);
-  if (!game) throw new AppError("NOT_FOUND", "بازی فعالی نیست.");
-
-  const round = await gameRepo.findLatestRoundForGame(game.id);
-  if (!round) throw new AppError("BAD_STATE", "دوری یافت نشد.");
 
   if (round.status === "scored") {
     return { alreadyScored: true as const, roundId: round.id };
@@ -35,7 +36,7 @@ export async function scoreCurrentRound(roomCode: string, hostUserId: string) {
 
   await prisma.$transaction(async (tx) => {
     const playerScoresRows = await tx.playerScore.findMany({
-      where: { gameId: game.id },
+      where: { gameId: params.gameId },
     });
 
     for (const cat of categories) {
@@ -86,6 +87,29 @@ export async function scoreCurrentRound(roomCode: string, hostUserId: string) {
     });
   });
 
-  emitRoomUpdate(room.code);
+  emitRoomUpdate(params.roomCode);
   return { alreadyScored: false as const, roundId: round.id };
+}
+
+export async function scoreCurrentRound(roomCode: string, hostUserId: string) {
+  const room = await prisma.room.findUnique({
+    where: { code: roomCode.toUpperCase() },
+  });
+  if (!room) throw new AppError("NOT_FOUND", "اتاق پیدا نشد.");
+
+  if (room.hostId !== hostUserId) {
+    throw new AppError("FORBIDDEN", "فقط میزبان می‌تواند امتیازدهی کند.");
+  }
+
+  const game = await gameRepo.findLatestActiveGameForRoom(room.id);
+  if (!game) throw new AppError("NOT_FOUND", "بازی فعالی نیست.");
+
+  const round = await gameRepo.findLatestRoundForGame(game.id);
+  if (!round) throw new AppError("BAD_STATE", "دوری یافت نشد.");
+
+  return applyScoresForRound({
+    gameId: game.id,
+    roundId: round.id,
+    roomCode: room.code,
+  });
 }

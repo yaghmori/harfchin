@@ -6,13 +6,14 @@ import * as roomRepo from "@/server/repositories/room.repository";
 import * as playerRepo from "@/server/repositories/player.repository";
 import * as answerRepo from "@/server/repositories/answer.repository";
 import * as categoryRepo from "@/server/repositories/category.repository";
+import * as roundReadyRepo from "@/server/repositories/round-ready.repository";
 import { validateAnswer } from "@/server/services/validation.service";
+import * as scoringService from "@/server/services/scoring.service";
 import { emitRoomUpdate } from "@/server/realtime/room-events";
 import {
   assertGameStartable,
   assertRoomCanStartGame,
   assertRoundCanAdvance,
-  assertRoundCanFinish,
   assertRoundCanSubmit,
 } from "@/server/rules/game-transitions";
 
@@ -31,6 +32,200 @@ function roundTimeEnded(
   return Date.now() >= endsMs;
 }
 
+type ActiveGameWithPlayers = NonNullable<
+  Awaited<ReturnType<typeof gameRepo.findLatestActiveGameForRoom>>
+>;
+
+async function ensureFullAnswerGridForRound(
+  roundId: string,
+  game: ActiveGameWithPlayers,
+) {
+  const categories = await categoryRepo.listActiveCategories();
+  for (const p of game.room.players) {
+    for (const cat of categories) {
+      const existing = await prisma.roundAnswer.findUnique({
+        where: {
+          roundId_roomPlayerId_categoryId: {
+            roundId,
+            roomPlayerId: p.id,
+            categoryId: cat.id,
+          },
+        },
+      });
+      if (existing) continue;
+      await answerRepo.upsertRoundAnswer({
+        roundId,
+        roomPlayerId: p.id,
+        categoryId: cat.id,
+        value: "",
+        normalizedValue: "",
+        isValid: false,
+      });
+    }
+  }
+}
+
+async function advanceAfterScoredRound(
+  roomCode: string,
+): Promise<{ finished: boolean; gameId: string }> {
+  const room = await roomRepo.findRoomByCode(roomCode);
+  if (!room) throw new AppError("NOT_FOUND", "اتاق پیدا نشد.");
+
+  const game = await gameRepo.findLatestActiveGameForRoom(room.id);
+  if (!game) {
+    const done = await gameRepo.findLatestFinishedGameForRoom(room.id);
+    if (!done) throw new AppError("NOT_FOUND", "بازی فعالی نیست.");
+    return { finished: true, gameId: done.id };
+  }
+
+  const round = await gameRepo.findLatestRoundForGame(game.id);
+  if (!round) throw new AppError("BAD_STATE", "دوری یافت نشد.");
+
+  await prisma.$transaction(async (tx) => {
+    const r = await tx.round.findFirst({
+      where: { id: round.id, gameId: game.id, status: "scored" },
+    });
+    if (!r) return;
+
+    await tx.roundPlayerReady.deleteMany({ where: { roundId: r.id } });
+
+    if (r.roundNumber >= game.totalRounds) {
+      await tx.game.update({
+        where: { id: game.id },
+        data: { status: "finished" },
+      });
+      await tx.room.update({
+        where: { id: room.id },
+        data: { status: "finished" },
+      });
+      await tx.round.update({
+        where: { id: r.id },
+        data: { status: "finished" },
+      });
+      return;
+    }
+
+    const nextNum = r.roundNumber + 1;
+    const letter = randomLetter();
+    await tx.round.update({
+      where: { id: r.id },
+      data: { status: "finished" },
+    });
+    await tx.round.create({
+      data: {
+        gameId: game.id,
+        roundNumber: nextNum,
+        letter,
+        status: "active",
+      },
+    });
+    await tx.game.update({
+      where: { id: game.id },
+      data: {
+        status: "in_progress",
+        currentRound: nextNum,
+      },
+    });
+  });
+
+  emitRoomUpdate(roomCode);
+
+  const latest = await gameRepo.findLatestGameForRoom(room.id);
+  if (!latest) throw new AppError("BAD_STATE", "بازی یافت نشد.");
+  if (latest.status === "finished") {
+    return { finished: true, gameId: latest.id };
+  }
+  return { finished: false, gameId: latest.id };
+}
+
+async function finalizeRoundPipeline(
+  roomCode: string,
+): Promise<{ finished: boolean; gameId: string }> {
+  const room = await roomRepo.findRoomByCode(roomCode);
+  if (!room) throw new AppError("NOT_FOUND", "اتاق پیدا نشد.");
+
+  const game = await gameRepo.findLatestActiveGameForRoom(room.id);
+  if (!game) {
+    const done = await gameRepo.findLatestFinishedGameForRoom(room.id);
+    if (!done) throw new AppError("NOT_FOUND", "بازی فعالی نیست.");
+    return { finished: true, gameId: done.id };
+  }
+
+  const round = await gameRepo.findLatestRoundForGame(game.id);
+  if (!round) throw new AppError("BAD_STATE", "دوری یافت نشد.");
+
+  if (round.status !== "active") {
+    const latest = await gameRepo.findLatestGameForRoom(room.id);
+    if (latest?.status === "finished") {
+      return { finished: true, gameId: latest.id };
+    }
+    const lr = latest
+      ? await gameRepo.findLatestRoundForGame(latest.id)
+      : null;
+    if (lr?.status === "active") {
+      return { finished: false, gameId: latest!.id };
+    }
+    if (lr?.status === "review") {
+      await scoringService.applyScoresForRound({
+        gameId: latest!.id,
+        roundId: lr.id,
+        roomCode: room.code,
+      });
+      return advanceAfterScoredRound(roomCode);
+    }
+    if (lr?.status === "scored") {
+      return advanceAfterScoredRound(roomCode);
+    }
+    return { finished: false, gameId: game.id };
+  }
+
+  await ensureFullAnswerGridForRound(round.id, game);
+
+  const now = new Date();
+  const updated = await prisma.round.updateMany({
+    where: { id: round.id, status: "active" },
+    data: { endedAt: now, status: "review" },
+  });
+
+  if (updated.count === 0) {
+    emitRoomUpdate(room.code);
+    const latestG = await gameRepo.findLatestGameForRoom(room.id);
+    if (!latestG) throw new AppError("NOT_FOUND", "بازی یافت نشد.");
+    const lr = await gameRepo.findLatestRoundForGame(latestG.id);
+    if (latestG.status === "finished") {
+      return { finished: true, gameId: latestG.id };
+    }
+    if (lr?.status === "active") {
+      return { finished: false, gameId: latestG.id };
+    }
+    if (lr?.status === "review") {
+      await scoringService.applyScoresForRound({
+        gameId: latestG.id,
+        roundId: lr.id,
+        roomCode: room.code,
+      });
+      return advanceAfterScoredRound(roomCode);
+    }
+    if (lr?.status === "scored") {
+      return advanceAfterScoredRound(roomCode);
+    }
+    return { finished: false, gameId: latestG.id };
+  }
+
+  await prisma.game.update({
+    where: { id: game.id },
+    data: { status: "review" },
+  });
+
+  await scoringService.applyScoresForRound({
+    gameId: game.id,
+    roundId: round.id,
+    roomCode: room.code,
+  });
+
+  return advanceAfterScoredRound(roomCode);
+}
+
 async function maybeAutoEndRound(roundId: string): Promise<void> {
   const round = await prisma.round.findUnique({
     where: { id: roundId },
@@ -39,17 +234,7 @@ async function maybeAutoEndRound(roundId: string): Promise<void> {
   if (!round || round.status !== "active") return;
   const endsMs = round.startedAt.getTime() + round.game.roundTimeSec * 1000;
   if (Date.now() < endsMs) return;
-  await prisma.$transaction([
-    prisma.round.update({
-      where: { id: round.id },
-      data: { endedAt: new Date(endsMs), status: "review" },
-    }),
-    prisma.game.update({
-      where: { id: round.gameId },
-      data: { status: "review" },
-    }),
-  ]);
-  emitRoomUpdate(round.game.room.code);
+  await finalizeRoundPipeline(round.game.room.code);
 }
 
 export async function startGame(params: { userId: string; roomCode: string }) {
@@ -123,32 +308,7 @@ export async function finishRound(params: { userId: string; roomCode: string }) 
     throw new AppError("FORBIDDEN", "فقط میزبان می‌تواند دور را پایان دهد.");
   }
 
-  const game = await gameRepo.findLatestActiveGameForRoom(room.id);
-  if (!game) throw new AppError("NOT_FOUND", "بازی فعالی نیست.");
-
-  const round = await gameRepo.findLatestRoundForGame(game.id);
-  if (!round) throw new AppError("BAD_STATE", "دوری یافت نشد.");
-
-  if (round.status === "review" || round.status === "scored") {
-    return { roundId: round.id };
-  }
-
-  assertRoundCanFinish(round.status);
-
-  const now = new Date();
-  await prisma.$transaction([
-    prisma.round.update({
-      where: { id: round.id },
-      data: { endedAt: now, status: "review" },
-    }),
-    prisma.game.update({
-      where: { id: game.id },
-      data: { status: "review" },
-    }),
-  ]);
-
-  emitRoomUpdate(params.roomCode);
-  return { roundId: round.id };
+  return finalizeRoundPipeline(params.roomCode);
 }
 
 export async function submitAnswers(params: {
@@ -202,6 +362,103 @@ export async function submitAnswers(params: {
 
   emitRoomUpdate(params.roomCode);
   return { ok: true as const };
+}
+
+export async function completeRound(params: {
+  userId: string;
+  roomCode: string;
+  answers: { categoryKey: string; value: string }[];
+}) {
+  const room = await roomRepo.findRoomByCode(params.roomCode);
+  if (!room) throw new AppError("NOT_FOUND", "اتاق پیدا نشد.");
+
+  const game = await gameRepo.findLatestActiveGameForRoom(room.id);
+  if (!game) throw new AppError("NOT_FOUND", "بازی فعالی نیست.");
+
+  let round = await gameRepo.findLatestRoundForGame(game.id);
+  if (!round) throw new AppError("BAD_STATE", "دوری یافت نشد.");
+
+  await maybeAutoEndRound(round.id);
+
+  round = await gameRepo.findLatestRoundForGame(game.id);
+  if (!round || round.status !== "active") {
+    const latestG = await gameRepo.findLatestGameForRoom(room.id);
+    if (latestG?.status === "finished") {
+      return {
+        outcome: "game_finished" as const,
+        gameId: latestG.id,
+      };
+    }
+    return { outcome: "round_advanced" as const };
+  }
+
+  const rp = await playerRepo.findRoomPlayer(room.id, params.userId);
+  if (!rp) throw new AppError("FORBIDDEN", "شما در این بازی نیستید.");
+
+  const isHost = room.hostId === params.userId;
+  const categories = await categoryRepo.listActiveCategories();
+  const byKey = new Map(categories.map((c) => [c.key, c]));
+
+  if (!isHost) {
+    if (params.answers.length !== categories.length) {
+      throw new AppError("VALIDATION", "همه ردیف‌ها را پر کنید.");
+    }
+    const keys = new Set(params.answers.map((a) => a.categoryKey));
+    if (keys.size !== categories.length) {
+      throw new AppError("VALIDATION", "همه ردیف‌ها را پر کنید.");
+    }
+    for (const c of categories) {
+      const row = params.answers.find((a) => a.categoryKey === c.key);
+      if (!row || row.value.trim().length === 0) {
+        throw new AppError("VALIDATION", "همه فیلدها را پر کنید.");
+      }
+    }
+  }
+
+  for (const row of params.answers) {
+    const cat = byKey.get(row.categoryKey);
+    if (!cat) continue;
+    const v = validateAnswer(row.value, round.letter);
+    await answerRepo.upsertRoundAnswer({
+      roundId: round.id,
+      roomPlayerId: rp.id,
+      categoryId: cat.id,
+      value: row.value.trim(),
+      normalizedValue: v.normalized,
+      isValid: v.isValid,
+    });
+  }
+
+  if (isHost) {
+    const out = await finalizeRoundPipeline(room.code);
+    return {
+      outcome: out.finished
+        ? ("game_finished" as const)
+        : ("round_advanced" as const),
+      gameId: out.gameId,
+    };
+  }
+
+  await roundReadyRepo.markRoundPlayerReady(round.id, rp.id);
+  const ready = await roundReadyRepo.countRoundPlayerReadies(round.id);
+  const total = game.room.players.length;
+
+  if (ready < total) {
+    emitRoomUpdate(room.code);
+    return {
+      outcome: "waiting_for_players" as const,
+      readyCount: ready,
+      totalPlayers: total,
+    };
+  }
+
+  const out = await finalizeRoundPipeline(room.code);
+  return {
+    outcome: out.finished
+      ? ("game_finished" as const)
+      : ("round_advanced" as const),
+    gameId: out.gameId,
+  };
 }
 
 export async function nextRound(params: { userId: string; roomCode: string }) {
@@ -383,15 +640,12 @@ export async function getGameStateByRoomCode(roomCode: string) {
   const allAnswers = await answerRepo.listAnswersForRound(r2.id);
 
   const phase =
-    r2.status === "active"
-      ? ended
-        ? ("review" as const)
-        : ("playing" as const)
-      : r2.status === "review"
-        ? ("review" as const)
-        : r2.status === "scored"
-          ? ("between" as const)
-          : ("playing" as const);
+    game.status === "review" ||
+    r2.status === "review" ||
+    r2.status === "scored" ||
+    (r2.status === "active" && ended)
+      ? ("processing_round" as const)
+      : ("playing" as const);
 
   const answersByPlayer = new Map<
     string,

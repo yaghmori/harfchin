@@ -1,7 +1,6 @@
 "use client";
 
 import { validateAnswerForLetter } from "@/domain/rules/answer-validation";
-import { CategoryPlayerTabs } from "@/components/game/CategoryPlayerTabs";
 import { GameBottomNav } from "@/components/game/GameBottomNav";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -52,7 +51,7 @@ type GamePayload = {
   meUserId: string;
   meRoomPlayerId: string | null;
   hostUserId: string;
-  phase: "none" | "playing" | "review" | "between" | "finished";
+  phase: "none" | "playing" | "processing_round" | "finished";
   roomStatus: string;
   game: {
     id: string;
@@ -160,6 +159,7 @@ export function GameClient({ roomCode }: { roomCode: string }) {
   const [busy, setBusy] = useState(false);
   const [tick, setTick] = useState(0);
   const [form, setForm] = useState<Record<string, string>>({});
+  const [waitHint, setWaitHint] = useState<string | null>(null);
 
   useSyncErrorToToast(error);
 
@@ -220,59 +220,40 @@ export function GameClient({ roomCode }: { roomCode: string }) {
 
   void tick;
 
-  async function submitAnswers() {
+  async function completeRoundAction() {
     if (!state?.game) return;
+    const allFilled =
+      state.categories.length > 0 &&
+      state.categories.every((c) => (form[c.key] ?? "").trim().length > 0);
+    if (!isHost && !allFilled) return;
+
     setBusy(true);
+    setWaitHint(null);
     try {
       const answers = state.categories.map((c) => ({
         categoryKey: c.key,
         value: form[c.key] ?? "",
       }));
-      await apiPost("/api/game/submit", { roomCode, answers });
-      await load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "خطا");
-    } finally {
-      setBusy(false);
-    }
-  }
+      const res = await apiPost<
+        | { outcome: "game_finished"; gameId: string }
+        | { outcome: "round_advanced"; gameId: string }
+        | {
+            outcome: "waiting_for_players";
+            readyCount: number;
+            totalPlayers: number;
+          }
+      >("/api/game/complete-round", { roomCode, answers });
 
-  async function finishRound() {
-    setBusy(true);
-    try {
-      await apiPost("/api/game/finish-round", { roomCode });
-      await load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "خطا");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function scoreRound() {
-    setBusy(true);
-    try {
-      await apiPost("/api/game/score-round", { roomCode });
-      await load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "خطا");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function nextRound() {
-    setBusy(true);
-    try {
-      const res = await apiPost<{ finished: boolean; gameId: string }>(
-        "/api/game/next-round",
-        { roomCode },
-      );
-      if (res.finished) {
+      if (res.outcome === "game_finished") {
         router.push(`/results/${res.gameId}`);
-      } else {
-        await load();
+        return;
       }
+      if (res.outcome === "waiting_for_players") {
+        setWaitHint(
+          `${faDigits(res.readyCount)} از ${faDigits(res.totalPlayers)} نفر آماده‌اند؛ منتظر بقیه…`,
+        );
+      }
+      await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "خطا");
     } finally {
@@ -289,14 +270,12 @@ export function GameClient({ roomCode }: { roomCode: string }) {
         <Alert variant="destructive" className="max-w-md">
           <AlertDescription>{error}</AlertDescription>
         </Alert>
-        <Button
-          render={<Link href="/" />}
-          nativeButton={false}
-          variant="link"
-          className="h-auto px-0"
+        <Link
+          href="/"
+          className="text-sm font-semibold text-ka-primary underline-offset-4 hover:underline"
         >
           خانه
-        </Button>
+        </Link>
       </div>
     );
   }
@@ -328,20 +307,10 @@ export function GameClient({ roomCode }: { roomCode: string }) {
   const phase = g.phase;
   const letter = round.letter;
 
-  function answersForCategory(catKey: string) {
-    return g.players.map((p) => {
-      const a = p.answers.find((x) => x.categoryKey === catKey);
-      return { player: p, answer: a };
-    });
-  }
-
-  function isDuplicate(catKey: string, normalized: string, isValid: boolean) {
-    if (!isValid || !normalized) return false;
-    const vals = answersForCategory(catKey)
-      .map(({ answer }) => (answer?.isValid ? answer.normalizedValue : ""))
-      .filter(Boolean);
-    return vals.filter((v) => v === normalized).length > 1;
-  }
+  const allFieldsFilled =
+    g.categories.length > 0 &&
+    g.categories.every((c) => (form[c.key] ?? "").trim().length > 0);
+  const canComplete = isHost || allFieldsFilled;
 
   const timerProgress =
     game.roundTimeSec > 0
@@ -393,6 +362,12 @@ export function GameClient({ roomCode }: { roomCode: string }) {
           <Alert variant="destructive">
             <AlertDescription>{error}</AlertDescription>
           </Alert>
+        ) : null}
+
+        {waitHint ? (
+          <p className="text-center text-sm font-medium text-ka-primary">
+            {waitHint}
+          </p>
         ) : null}
 
         <header className="flex flex-col items-center space-y-5 pt-2">
@@ -478,28 +453,13 @@ export function GameClient({ roomCode }: { roomCode: string }) {
           })}
         </section>
 
-        {isHost ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => void finishRound()}
-            disabled={busy}
-            className="w-full rounded-2xl border-ka-outline-variant"
-          >
-            پایان دور برای همه
-          </Button>
-        ) : null}
-
         <p className="text-center text-xs text-ka-on-surface-variant">
-          <Button
-            render={<Link href={`/lobby/${roomCode}`} />}
-            nativeButton={false}
-            variant="link"
-            className="h-auto p-0 text-xs font-medium text-ka-on-surface-variant"
+          <Link
+            href={`/lobby/${roomCode}`}
+            className="text-xs font-medium text-ka-on-surface-variant underline-offset-4 hover:underline"
           >
             بازگشت به لابی
-          </Button>
+          </Link>
         </p>
       </main>
 
@@ -508,11 +468,11 @@ export function GameClient({ roomCode }: { roomCode: string }) {
           <Button
             type="button"
             size="lg"
-            onClick={() => void submitAnswers()}
-            disabled={busy}
+            onClick={() => void completeRoundAction()}
+            disabled={busy || !canComplete}
             className="ka-kinetic-shadow-lg h-auto gap-3 rounded-full px-10 py-5 font-heading text-xl font-black shadow-lg"
           >
-            <span>استپ!</span>
+            <span>پایان دور</span>
             <Hand className="size-7" aria-hidden />
           </Button>
         </div>
