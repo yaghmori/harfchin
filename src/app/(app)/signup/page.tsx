@@ -2,9 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { AuthBottomNav } from "@/components/auth/AuthBottomNav";
 import { AuthSignUpClient } from "@/components/auth/AuthSignUpClient";
-import { AuthTopBar } from "@/components/auth/AuthTopBar";
 import { getSessionUser } from "@/server/session";
 
 export const metadata: Metadata = {
@@ -18,10 +16,8 @@ export default async function SignUpPage() {
   }
 
   return (
-    <div className="ka-auth-page flex min-h-[max(884px,100dvh)] min-h-screen flex-col items-center justify-center bg-ka-surface text-ka-on-surface selection:bg-ka-primary-fixed selection:text-ka-on-primary-fixed">
-      <AuthTopBar />
-
-      <main className="flex w-full max-w-md flex-col items-center px-8 pt-24 pb-32">
+    <div className="ka-auth-page flex flex-1 flex-col items-center justify-center bg-ka-surface py-6 text-ka-on-surface selection:bg-ka-primary-fixed selection:text-ka-on-primary-fixed">
+      <main className="flex w-full max-w-md flex-col items-center px-8 py-4">
         <div className="mb-12 flex flex-col items-center">
           <div className="relative mb-6 flex h-32 w-32 items-center justify-center rounded-full bg-ka-surface-container-lowest shadow-[0_12px_32px_rgba(25,28,29,0.06)]">
             <div
@@ -43,10 +39,8 @@ export default async function SignUpPage() {
         <AuthSignUpClient />
       </main>
 
-      <AuthBottomNav active="signup" />
-
-      <footer className="hidden py-8 md:block">
-        <p className="font-medium text-ka-on-surface-variant">
+      <footer className="px-8 pb-6 text-center">
+        <p className="text-sm font-medium text-ka-on-surface-variant">
           قبلاً ثبت‌نام کرده‌اید؟{" "}
           <Link
             href="/login"

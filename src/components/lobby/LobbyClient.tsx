@@ -9,7 +9,6 @@ import { faDigits } from "@/lib/format";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { LobbyBottomNav } from "./LobbyBottomNav";
 import { LobbyChat } from "./LobbyChat";
 import { LobbyFinishedAlert } from "./LobbyFinishedAlert";
 import { LobbyHeader } from "./LobbyHeader";
@@ -25,8 +24,9 @@ export function LobbyClient({ roomCode }: { roomCode: string }) {
   const [busy, setBusy] = useState(false);
   const [chatDraft, setChatDraft] = useState("");
   const [chatBusy, setChatBusy] = useState(false);
-  const [copiedCode, setCopiedCode] = useState(false);
   const [copiedInvite, setCopiedInvite] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [showQr, setShowQr] = useState(false);
   /** One automatic «آماده» per visit when the lobby is open (no manual ready button). */
   const autoReadyAttemptedRef = useRef(false);
 
@@ -160,17 +160,6 @@ export function LobbyClient({ roomCode }: { roomCode: string }) {
     }
   }
 
-  async function copyRoomCode() {
-    if (!state || typeof navigator.clipboard?.writeText !== "function") return;
-    try {
-      await navigator.clipboard.writeText(state.roomCode);
-      setCopiedCode(true);
-      setTimeout(() => setCopiedCode(false), 2000);
-    } catch {
-      setError("کپی کد ناموفق بود.");
-    }
-  }
-
   async function copyInviteLink() {
     if (!state || typeof navigator.clipboard?.writeText !== "function") return;
     const origin =
@@ -182,6 +171,45 @@ export function LobbyClient({ roomCode }: { roomCode: string }) {
       setTimeout(() => setCopiedInvite(false), 2000);
     } catch {
       setError("کپی لینک ناموفق بود.");
+    }
+  }
+
+  async function openQr() {
+    if (!state) return;
+    try {
+      if (!qrDataUrl) {
+        const origin = typeof window !== "undefined" ? window.location.origin : "";
+        const url = `${origin}/join?code=${encodeURIComponent(state.roomCode)}`;
+        const { default: QRCode } = await import("qrcode");
+        const dataUrl = await QRCode.toDataURL(url, {
+          margin: 2,
+          width: 240,
+          color: { dark: "#191c1dff", light: "#ffffffff" },
+        });
+        setQrDataUrl(dataUrl);
+      }
+      setShowQr(true);
+    } catch {
+      setError("ساخت QR ناموفق بود.");
+    }
+  }
+
+  async function shareInvite() {
+    if (!state) return;
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const url = `${origin}/join?code=${encodeURIComponent(state.roomCode)}`;
+    try {
+      if (typeof navigator.share === "function") {
+        await navigator.share({
+          title: `دعوت به اتاق ${state.title || state.roomCode}`,
+          text: "برای پیوستن به بازی، این لینک را باز کنید",
+          url,
+        });
+      } else {
+        await copyInviteLink();
+      }
+    } catch {
+      /* user cancelled share sheet */
     }
   }
 
@@ -249,7 +277,7 @@ export function LobbyClient({ roomCode }: { roomCode: string }) {
         onLeave={leave}
       />
 
-      <main className="mx-auto max-w-5xl px-4 pb-32 pt-24 md:px-6 md:pb-10">
+      <main className="mx-auto max-w-5xl px-0 pb-8 pt-2 md:px-2 md:pb-10">
         {error ? (
           <Alert variant="destructive" className="mb-4">
             <AlertDescription>{error}</AlertDescription>
@@ -261,9 +289,12 @@ export function LobbyClient({ roomCode }: { roomCode: string }) {
           isHost={!!isHost}
           canStart={canStart}
           busy={busy}
-          copiedCode={copiedCode}
           copiedInvite={copiedInvite}
-          onCopyRoomCode={copyRoomCode}
+          qrDataUrl={qrDataUrl}
+          showQr={showQr}
+          onOpenQr={openQr}
+          onCloseQr={() => setShowQr(false)}
+          onShareInvite={shareInvite}
           onCopyInviteLink={copyInviteLink}
           onStartGame={startGame}
         />
@@ -301,8 +332,6 @@ export function LobbyClient({ roomCode }: { roomCode: string }) {
           chatDisabled={state.status === "finished"}
         />
       </main>
-
-      <LobbyBottomNav />
     </div>
   );
 }

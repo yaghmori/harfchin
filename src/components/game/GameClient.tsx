@@ -1,7 +1,6 @@
 "use client";
 
 import { validateAnswerForLetter } from "@/domain/rules/answer-validation";
-import { SiteShell } from "@/components/layout/SiteShell";
 import { CategoryPlayerTabs } from "@/components/game/CategoryPlayerTabs";
 import { GameBottomNav } from "@/components/game/GameBottomNav";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -283,19 +282,22 @@ export function GameClient({ roomCode }: { roomCode: string }) {
 
   if (error && !state) {
     return (
-      <SiteShell>
-        <Alert variant="destructive">
+      <div
+        className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-background px-5"
+        dir="rtl"
+      >
+        <Alert variant="destructive" className="max-w-md">
           <AlertDescription>{error}</AlertDescription>
         </Alert>
         <Button
           render={<Link href="/" />}
           nativeButton={false}
           variant="link"
-          className="mt-4 h-auto px-0"
+          className="h-auto px-0"
         >
           خانه
         </Button>
-      </SiteShell>
+      </div>
     );
   }
 
@@ -311,11 +313,12 @@ export function GameClient({ roomCode }: { roomCode: string }) {
 
   if (!state?.game || !state.round) {
     return (
-      <SiteShell>
-        <p className="text-center text-muted-foreground">
-          در حال اتصال به بازی…
-        </p>
-      </SiteShell>
+      <div
+        className="flex min-h-dvh items-center justify-center bg-background px-5 text-muted-foreground"
+        dir="rtl"
+      >
+        <p className="text-center text-sm font-medium">در حال اتصال به بازی…</p>
+      </div>
     );
   }
 

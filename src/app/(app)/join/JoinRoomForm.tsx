@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, QrCode, Users } from "lucide-react";
+import { QrCode, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -142,27 +142,11 @@ export function JoinRoomForm() {
         aria-hidden
       />
 
-      <header
-        className={cn(
-          "fixed top-0 z-50 flex h-16 w-full items-center justify-between px-6",
-          "bg-white/80 shadow-[0_12px_32px_rgba(25,28,29,0.06)] backdrop-blur-xl",
-          "dark:bg-zinc-950/80",
-        )}
-      >
-        <Link
-          href="/"
-          aria-label="بازگشت"
-          className="flex size-10 scale-95 items-center justify-center rounded-full transition-colors hover:bg-violet-50 active:duration-150 dark:hover:bg-violet-950/40"
-        >
-          <ArrowRight className="size-7 text-violet-600 dark:text-violet-400" />
-        </Link>
-        <h1 className="text-lg font-bold leading-relaxed text-zinc-800 dark:text-zinc-100">
-          ورود به اتاق
-        </h1>
-        <div className="w-10 shrink-0" aria-hidden />
-      </header>
+      <h1 className="mb-2 w-full max-w-md self-center text-center text-lg font-black text-zinc-800 dark:text-zinc-100">
+        ورود به اتاق
+      </h1>
 
-      <main className="flex w-full max-w-md flex-col items-center px-6 pb-12 pt-24">
+      <main className="flex w-full max-w-md flex-col items-center px-6 pb-12 pt-4">
         <div className="relative mb-12 flex flex-col items-center justify-center">
           <div
             className="absolute -z-10 size-48 rounded-full bg-linear-to-tr from-ka-primary/10 to-ka-secondary/10 blur-2xl"

@@ -1,9 +1,9 @@
 import { AchievementMiniCard } from "@/components/profile/AchievementMiniCard";
 import { ProfileLogoutButton } from "@/components/profile/ProfileLogoutButton";
-import { ProfileTabBar } from "@/components/profile/ProfileTabBar";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import type { getProfileForUser } from "@/server/services/profile.service";
-import { Gamepad2, HelpCircle, Menu, Settings, UserRound } from "lucide-react";
+import { Gamepad2, HelpCircle, PencilLine, UserRound } from "lucide-react";
 import Link from "next/link";
 
 type ProfilePayload = NonNullable<Awaited<ReturnType<typeof getProfileForUser>>>;
@@ -34,32 +34,24 @@ export function ProfileView({ data }: { data: ProfilePayload }) {
   const levelStr = data.level.toLocaleString("fa-IR");
 
   return (
-    <div className="min-h-[100dvh] bg-white pb-28 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-50">
-      <header className="sticky top-0 z-10 flex items-center justify-between border-b border-violet-100/80 bg-white/90 px-4 py-3 backdrop-blur-md dark:border-violet-900/50 dark:bg-zinc-950/90">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="rounded-full text-zinc-600 dark:text-zinc-300"
-          aria-label="تنظیمات"
-        >
-          <Settings className="size-5" />
-        </Button>
-        <h1 className="text-sm font-bold text-zinc-800 dark:text-zinc-100">
-          پروفایل کاربری
-        </h1>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="rounded-full text-zinc-600 dark:text-zinc-300"
-          aria-label="منو"
-        >
-          <Menu className="size-5" />
-        </Button>
-      </header>
-
-      <main className="mx-auto max-w-lg px-4 pt-6">
+    <div className="text-zinc-900 dark:bg-zinc-950 dark:text-zinc-50">
+      <main className="mx-auto max-w-lg">
+        <div className="mb-6 flex items-center justify-between gap-3">
+          <span className="w-10 shrink-0" aria-hidden />
+          <h1 className="flex-1 text-center text-lg font-black text-zinc-900 dark:text-white">
+            پروفایل کاربری
+          </h1>
+          <Link
+            href="/profile/edit"
+            className={cn(
+              buttonVariants({ variant: "ghost", size: "icon-sm" }),
+              "shrink-0 text-[#7E3AF2] hover:bg-violet-100 dark:hover:bg-violet-950/50",
+            )}
+            aria-label="ویرایش پروفایل"
+          >
+            <PencilLine className="size-5" aria-hidden />
+          </Link>
+        </div>
         <div className="flex flex-col items-center">
           <div className="relative mb-2">
             <div
@@ -82,6 +74,13 @@ export function ProfileView({ data }: { data: ProfilePayload }) {
           <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
             {data.memberSinceLabel}
           </p>
+          <Link
+            href="/profile/edit"
+            className="mt-4 inline-flex items-center gap-2 rounded-full border border-violet-200/80 bg-violet-50 px-4 py-2 text-sm font-bold text-[#7E3AF2] transition-colors hover:bg-violet-100 dark:border-violet-800 dark:bg-violet-950/40 dark:hover:bg-violet-900/40"
+          >
+            <PencilLine className="size-4" aria-hidden />
+            ویرایش پروفایل
+          </Link>
         </div>
 
         <div className="mt-8 grid grid-cols-3 gap-2">
@@ -192,8 +191,6 @@ export function ProfileView({ data }: { data: ProfilePayload }) {
           <ProfileLogoutButton />
         </div>
       </main>
-
-      <ProfileTabBar />
     </div>
   );
 }

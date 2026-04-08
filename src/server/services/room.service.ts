@@ -45,7 +45,12 @@ export async function createRoom(params: {
   if (title.length === 0) {
     throw new AppError("VALIDATION", "نام اتاق الزامی است.");
   }
-  const displaySource = (params.displayName ?? title).trim();
+  const user = await userRepo.findUserById(params.userId);
+  if (!user) {
+    throw new AppError("FORBIDDEN", "کاربر معتبر نیست.");
+  }
+  const displaySource =
+    params.displayName?.trim() || user.name?.trim() || "میزبان";
   const displayName = normalizeDisplayName(
     displaySource.slice(0, MAX_DISPLAY_NAME_LENGTH),
   );
@@ -85,7 +90,9 @@ export async function createRoom(params: {
     },
   });
 
-  await userRepo.updateUserName(params.userId, displayName);
+  if (params.displayName?.trim()) {
+    await userRepo.updateUserName(params.userId, displayName);
+  }
 
   return { roomCode: room.code, roomId: room.id };
 }

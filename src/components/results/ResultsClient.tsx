@@ -7,7 +7,6 @@ import { useSyncErrorToToast } from "@/hooks/use-sync-error-toast";
 import { faDigits } from "@/lib/format";
 import { apiGet, apiPost } from "@/features/api/client";
 import { CategoryPlayerTabs } from "@/components/game/CategoryPlayerTabs";
-import { GameBottomNav } from "@/components/game/GameBottomNav";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -232,26 +231,26 @@ export function ResultsClient({ gameId }: { gameId: string }) {
       ?.totalScore ?? 0;
 
   return (
-    <div className="flex min-h-dvh flex-col bg-ka-surface pb-36 text-ka-on-surface">
-      <header className="sticky top-0 z-40 flex w-full items-center justify-between bg-white/80 px-5 py-4 shadow-[0_12px_32px_rgba(25,28,29,0.06)] backdrop-blur-xl dark:bg-zinc-950/80">
-        <div className="flex items-center gap-3">
+    <div className="flex flex-col bg-ka-surface pb-6 text-ka-on-surface">
+      <div className="mb-4 flex items-center justify-between gap-2 rounded-2xl border border-ka-outline-variant/35 bg-white/80 px-4 py-3 dark:bg-zinc-900/60">
+        <div className="flex items-center gap-2">
           <div
             className="flex size-10 shrink-0 items-center justify-center rounded-full bg-ka-primary-fixed font-heading text-lg font-black text-ka-on-primary-fixed"
             aria-hidden
           >
             {displayInitial}
           </div>
-          <span className="font-heading text-lg font-black tracking-tight text-ka-primary">
-            حرفچین
+          <span className="text-sm font-bold text-ka-on-surface-variant">
+            امتیاز شما
           </span>
         </div>
         <div className="flex items-center gap-1.5 rounded-full bg-ka-secondary-container px-3.5 py-1.5 font-heading text-sm font-semibold text-ka-on-secondary-container">
           <span>{faDigits(myTotal)} امتیاز</span>
           <Star className="size-4 fill-amber-600 text-amber-700" aria-hidden />
         </div>
-      </header>
+      </div>
 
-      <main className="mx-auto w-full max-w-lg flex-1 space-y-6 px-5 pt-6">
+      <main className="mx-auto w-full max-w-lg flex-1 space-y-6 px-1 sm:px-2">
         {error ? (
           <Alert variant="destructive">
             <AlertDescription>{error}</AlertDescription>
@@ -554,10 +553,6 @@ export function ResultsClient({ gameId }: { gameId: string }) {
           </Button>
         </div>
       </main>
-
-      <div className="fixed bottom-0 left-0 z-50 w-full">
-        <GameBottomNav active="leaderboard" />
-      </div>
     </div>
   );
 }

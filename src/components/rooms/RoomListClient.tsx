@@ -2,7 +2,7 @@
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -14,15 +14,7 @@ import { Input } from "@/components/ui/input";
 import { apiGet } from "@/features/api/client";
 import type { DirectoryRoom } from "@/lib/room-directory";
 import { cn } from "@/lib/utils";
-import {
-  Gamepad2,
-  LogIn,
-  Plus,
-  Search,
-  Settings,
-  Trophy,
-  Users,
-} from "lucide-react";
+import { Plus, Search, Trophy, Users } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSyncErrorToToast } from "@/hooks/use-sync-error-toast";
@@ -147,28 +139,8 @@ export function RoomListClient() {
   const onlineLabel = formatFaInt(rooms.length);
 
   return (
-    <div className="min-h-dvh bg-ka-background pb-36 text-ka-on-background">
-      <header className="fixed top-0 z-50 flex w-full items-center justify-between bg-white/80 px-6 py-4 shadow-[0_12px_32px_rgba(25,28,29,0.06)] backdrop-blur-xl dark:bg-zinc-950/80">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-ka-primary-fixed">
-            <Gamepad2 className="size-7 text-ka-on-primary-fixed" aria-hidden />
-          </div>
-          <span className="font-heading text-xl font-bold tracking-tighter text-violet-700 dark:text-violet-300">
-            حرفچین
-          </span>
-        </div>
-        <Button
-          render={<Link href="/" />}
-          nativeButton={false}
-          variant="secondary"
-          size="sm"
-          className="font-semibold text-violet-600 dark:text-violet-400"
-        >
-          خانه
-        </Button>
-      </header>
-
-      <main className="mx-auto max-w-4xl px-6 pt-24">
+    <div className="text-ka-on-background">
+      <main className="mx-auto max-w-4xl px-2 pt-1 sm:px-4">
         <div className="mb-8 flex items-end justify-between gap-4">
           <div>
             <h1 className="mb-2 text-3xl font-extrabold tracking-tight text-ka-on-background sm:text-4xl">
@@ -255,57 +227,17 @@ export function RoomListClient() {
         </section>
       </main>
 
-      <div className="fixed bottom-32 left-8 z-50">
+      <div className="fixed bottom-24 end-6 z-40 sm:end-10">
         <Button
           render={<Link href="/create" />}
           nativeButton={false}
           size="lg"
-          className="h-auto gap-3 px-6 py-5 text-lg shadow-[0_16px_40px_rgba(99,14,212,0.3)] hover:scale-110 active:scale-95"
+          className="h-auto gap-3 px-6 py-5 text-lg shadow-[0_16px_40px_rgba(99,14,212,0.3)] hover:scale-105 active:scale-95"
         >
           <Plus className="size-6 stroke-[2.5]" aria-hidden />
           ساخت روم جدید
         </Button>
       </div>
-
-      <nav className="fixed bottom-0 left-0 z-50 flex w-full justify-around rounded-t-[3rem] bg-white/90 px-4 pt-3 pb-6 shadow-[0_-8px_24px_rgba(25,28,29,0.04)] backdrop-blur-lg dark:bg-zinc-950/90">
-        <Link
-          href="/"
-          className={cn(
-            buttonVariants({ variant: "ghost", size: "sm" }),
-            "h-auto flex-col gap-0 rounded-xl px-5 py-2 text-zinc-400 hover:text-violet-500 dark:text-zinc-500",
-          )}
-        >
-          <Gamepad2 className="size-6" aria-hidden />
-          <span className="mt-1 text-[10px] font-bold">بازی</span>
-        </Link>
-        <span className="flex cursor-default flex-col items-center justify-center rounded-full bg-violet-100 px-5 py-2 text-violet-700 scale-110 dark:bg-violet-900/30 dark:text-violet-200">
-          <Users
-            className="size-6 fill-violet-700 text-violet-700 dark:fill-violet-200 dark:text-violet-200"
-            aria-hidden
-          />
-          <span className="mt-1 text-[10px] font-bold">روم‌ها</span>
-        </span>
-        <Link
-          href="/join"
-          className={cn(
-            buttonVariants({ variant: "ghost", size: "sm" }),
-            "h-auto flex-col gap-0 rounded-xl px-5 py-2 text-zinc-400 hover:text-violet-500 dark:text-zinc-500",
-          )}
-        >
-          <LogIn className="size-6" aria-hidden />
-          <span className="mt-1 text-[10px] font-bold">ورود با کد</span>
-        </Link>
-        <Link
-          href="/"
-          className={cn(
-            buttonVariants({ variant: "ghost", size: "sm" }),
-            "h-auto flex-col gap-0 rounded-xl px-5 py-2 text-zinc-400 hover:text-violet-500 dark:text-zinc-500",
-          )}
-        >
-          <Settings className="size-6" aria-hidden />
-          <span className="mt-1 text-[10px] font-bold">خانه</span>
-        </Link>
-      </nav>
     </div>
   );
 }

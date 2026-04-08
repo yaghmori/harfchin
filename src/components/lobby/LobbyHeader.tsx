@@ -17,7 +17,7 @@ export function LobbyHeader({
   onLeave,
 }: LobbyHeaderProps) {
   return (
-    <header className="fixed top-0 z-50 flex w-full items-center justify-between px-4 py-4 shadow-[0_12px_32px_rgba(25,28,29,0.06)] backdrop-blur-xl md:px-6 bg-white/80 dark:bg-zinc-950/80">
+    <header className="mb-4 flex w-full items-center justify-between rounded-2xl border border-ka-outline-variant/30 bg-white/90 px-4 py-3 shadow-sm backdrop-blur-md md:px-5 dark:border-zinc-700 dark:bg-zinc-900/80">
       <div className="flex items-center gap-2 rounded-full border border-ka-secondary-container/30 bg-ka-secondary-container/20 px-3 py-1.5">
         <Coins
           className="size-4 text-ka-secondary shrink-0"

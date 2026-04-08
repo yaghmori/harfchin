@@ -23,3 +23,17 @@ export async function apiGet<T>(url: string): Promise<T> {
   }
   return json.data;
 }
+
+export async function apiPatch<T>(url: string, body: unknown): Promise<T> {
+  const res = await fetch(url, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(body),
+  });
+  const json = (await res.json()) as ApiOk<T> | ApiErr;
+  if (!json.ok) {
+    throw new Error(json.error.message);
+  }
+  return json.data;
+}
