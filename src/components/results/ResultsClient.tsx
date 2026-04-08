@@ -9,7 +9,6 @@ import { SiteShell } from "@/components/layout/SiteShell";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 
 type ResultsPayload = {
   meUserId: string;
@@ -78,7 +77,7 @@ export function ResultsClient({ gameId }: { gameId: string }) {
           render={<Link href="/" />}
           nativeButton={false}
           variant="link"
-          className="mt-4 h-auto px-0 text-teal-700 dark:text-teal-300"
+          className="mt-4 h-auto px-0"
         >
           خانه
         </Button>
@@ -98,41 +97,59 @@ export function ResultsClient({ gameId }: { gameId: string }) {
 
   return (
     <SiteShell>
-      <h1 className="mb-2 text-2xl font-bold">نتایج نهایی</h1>
-      <p className="mb-6 text-sm text-muted-foreground">
+      <h1 className="mb-2 text-2xl font-black tracking-tight sm:text-3xl">
+        نتایج نهایی
+      </h1>
+      <p className="mb-6 text-sm font-medium text-muted-foreground">
         بازی تمام شد. رتبه‌بندی بر اساس مجموع امتیاز دورهاست.
       </p>
 
-      <Card className="mb-8">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">جدول نهایی</CardTitle>
+      <Card className="mb-8 overflow-hidden py-0">
+        <CardHeader className="border-b border-border/40 bg-[var(--game-timer-bg)]/70 py-3 dark:bg-[var(--game-timer-bg)]/25">
+          <CardTitle className="text-base font-bold">جدول نهایی</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-0 pt-0">
-          {data.leaderboard.map((row, i) => (
-            <div key={row.roomPlayerId}>
-              {i > 0 ? <Separator className="my-2" /> : null}
-              <div className="flex items-center justify-between py-1 text-sm sm:text-base">
-                <span>
-                  <span className="ms-2 font-mono text-muted-foreground" dir="ltr">
-                    {faDigits(i + 1)}
-                  </span>
-                  {row.displayName}
+        <CardContent className="space-y-2 py-4">
+          {data.leaderboard.map((row, i) => {
+            const medal =
+              i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
+            return (
+              <div
+                key={row.roomPlayerId}
+                className="flex items-center justify-between gap-2 rounded-xl border border-border/40 bg-[var(--game-input)]/35 px-3 py-2.5 dark:bg-[var(--game-input)]/20"
+              >
+                <span className="flex min-w-0 items-center gap-2 text-sm font-semibold sm:text-base">
+                  {medal ? (
+                    <span className="text-xl" aria-hidden>
+                      {medal}
+                    </span>
+                  ) : (
+                    <span
+                      className="w-7 text-center font-mono text-xs text-muted-foreground"
+                      dir="ltr"
+                    >
+                      {faDigits(i + 1)}
+                    </span>
+                  )}
+                  <span className="truncate">{row.displayName}</span>
                 </span>
-                <span className="font-mono text-lg" dir="ltr">
+                <span
+                  className="shrink-0 font-mono text-lg font-bold text-[var(--game-blue-dark)] dark:text-[var(--game-blue)]"
+                  dir="ltr"
+                >
                   {faDigits(row.totalScore)}
                 </span>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </CardContent>
       </Card>
 
       <div className="flex flex-col gap-3 sm:flex-row">
         <Button
-          variant="outline"
+          variant="secondary"
           render={<Link href="/" />}
           nativeButton={false}
-          className="h-10 flex-1"
+          className="flex-1"
         >
           خانه
         </Button>
@@ -140,8 +157,9 @@ export function ResultsClient({ gameId }: { gameId: string }) {
           <Button
             type="button"
             disabled={busy}
+            variant="game"
             onClick={() => void replay()}
-            className="h-10 flex-1 bg-teal-600 text-white hover:bg-teal-700 dark:bg-teal-700 dark:hover:bg-teal-600"
+            className="flex-1"
           >
             بازی دوباره
           </Button>
@@ -149,7 +167,8 @@ export function ResultsClient({ gameId }: { gameId: string }) {
           <Button
             render={<Link href={`/lobby/${data.roomCode}`} />}
             nativeButton={false}
-            className="h-10 flex-1 bg-teal-600 text-white hover:bg-teal-700 dark:bg-teal-700 dark:hover:bg-teal-600"
+            variant="game"
+            className="flex-1"
           >
             بازگشت به لابی
           </Button>

@@ -23,4 +23,5 @@ export const MAX_DISPLAY_NAME_LENGTH = 32;
 
 export const MAX_ANSWER_LENGTH = 120;
 
+/** Polling interval for game state when not using SSE. */
 export const POLL_INTERVAL_MS = 2500;

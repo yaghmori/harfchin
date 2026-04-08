@@ -36,10 +36,15 @@ export default function JoinRoomPage() {
 
   return (
     <SiteShell>
-      <h1 className="mb-6 text-2xl font-bold">ورود به اتاق</h1>
-      <Card className="max-w-md">
-        <CardHeader>
-          <CardTitle className="text-base">ورود</CardTitle>
+      <h1 className="mb-2 text-2xl font-black tracking-tight sm:text-3xl">
+        ورود به اتاق
+      </h1>
+      <p className="mb-6 text-sm font-medium text-muted-foreground">
+        کد اتاق را از میزبان بگیرید و وارد شوید.
+      </p>
+      <Card className="max-w-md border-[var(--game-mint-text)]/15">
+        <CardHeader className="border-b border-border/40 bg-[var(--game-mint-bg)]/40 pb-3 dark:bg-[var(--game-mint-bg)]/15">
+          <CardTitle className="text-base font-bold">ورود</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={onSubmit} className="flex flex-col gap-4">
@@ -76,7 +81,8 @@ export default function JoinRoomPage() {
             <Button
               type="submit"
               disabled={loading}
-              className="h-10 w-full bg-teal-600 text-white hover:bg-teal-700 dark:bg-teal-700 dark:hover:bg-teal-600"
+              variant="game"
+              className="w-full"
             >
               {loading ? "در حال ورود…" : "ورود"}
             </Button>

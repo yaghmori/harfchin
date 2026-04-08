@@ -1,11 +1,5 @@
 "use client";
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
-import { POLL_INTERVAL_MS } from "@/lib/constants";
-import { faDigits } from "@/lib/format";
-import { apiGet, apiPost } from "@/features/api/client";
 import { SiteShell } from "@/components/layout/SiteShell";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +13,12 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { apiGet, apiPost } from "@/features/api/client";
+import { useRoomSse } from "@/features/realtime/useRoomSse";
+import { faDigits } from "@/lib/format";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
 
 type Player = {
   id: string;
@@ -71,9 +71,9 @@ export function LobbyClient({ roomCode }: { roomCode: string }) {
 
   useEffect(() => {
     void load();
-    const id = setInterval(() => void load(), POLL_INTERVAL_MS);
-    return () => clearInterval(id);
   }, [load]);
+
+  useRoomSse(roomCode, load);
 
   const me = state?.players.find((p) => p.userId === state.meUserId);
   const isHost = state?.hostId === state?.meUserId;
@@ -162,7 +162,7 @@ export function LobbyClient({ roomCode }: { roomCode: string }) {
           render={<Link href="/" />}
           nativeButton={false}
           variant="link"
-          className="mt-4 h-auto px-0 text-teal-700 dark:text-teal-300"
+          className="mt-4 h-auto px-0"
         >
           بازگشت
         </Button>
@@ -178,7 +178,8 @@ export function LobbyClient({ roomCode }: { roomCode: string }) {
     );
   }
 
-  const allReady = state.players.length > 0 && state.players.every((p) => p.isReady);
+  const allReady =
+    state.players.length > 0 && state.players.every((p) => p.isReady);
   const canStart =
     isHost &&
     state.players.length >= state.minPlayersToStart &&
@@ -193,34 +194,43 @@ export function LobbyClient({ roomCode }: { roomCode: string }) {
         </Alert>
       ) : null}
 
-      <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">لابی</h1>
-          <p className="text-muted-foreground">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-black tracking-tight sm:text-3xl">
+            لابی
+          </h1>
+          <p className="text-sm text-muted-foreground">
             کد اتاق:{" "}
-            <span className="font-mono text-lg font-semibold text-foreground" dir="ltr">
+            <span
+              className="rounded-lg bg-[var(--game-input)] px-2 py-0.5 font-mono text-base font-bold text-[var(--game-blue-dark)] dark:text-[var(--game-blue)]"
+              dir="ltr"
+            >
               {state.roomCode}
             </span>
           </p>
         </div>
         <Button
           type="button"
-          variant="outline"
+          variant="secondary"
           onClick={() => void leave()}
           disabled={busy}
-          className="h-9"
+          className="shrink-0"
         >
           ترک اتاق
         </Button>
       </div>
 
       {isHost && state.status === "waiting" ? (
-        <Card className="mb-8">
-          <CardHeader>
+        <Card className="mb-8 border-[var(--game-blue)]/20">
+          <CardHeader className="border-b border-border/40 bg-[var(--game-timer-bg)]/50 pb-3 dark:bg-[var(--game-timer-bg)]/20">
             <CardTitle className="text-base">تنظیمات بازی (میزبان)</CardTitle>
           </CardHeader>
           <CardContent>
-            <form id="lobby-settings" onSubmit={saveSettings} className="space-y-4">
+            <form
+              id="lobby-settings"
+              onSubmit={saveSettings}
+              className="space-y-4"
+            >
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="space-y-2">
                   <Label htmlFor="draftRounds">تعداد دور</Label>
@@ -275,25 +285,29 @@ export function LobbyClient({ roomCode }: { roomCode: string }) {
       ) : null}
 
       <section className="mb-8">
-        <h2 className="mb-3 font-semibold">بازیکنان</h2>
-        <ul className="space-y-2">
+        <h2 className="mb-3 text-lg font-black">بازیکنان</h2>
+        <ul className="space-y-2.5">
           {state.players.map((p) => (
             <li key={p.id}>
-              <Card className="py-3">
-                <CardContent className="flex items-center justify-between px-3 py-0">
-                  <span className="flex flex-wrap items-center gap-2">
-                    {p.displayName}
+              <Card className="py-0">
+                <CardContent className="flex items-center justify-between gap-3 px-4 py-3">
+                  <span className="flex min-w-0 flex-wrap items-center gap-2">
+                    <span className="truncate font-semibold">
+                      {p.displayName}
+                    </span>
                     {p.isHost ? (
                       <Badge
                         variant="secondary"
-                        className="text-xs text-teal-700 dark:text-teal-300"
+                        className="border-0 bg-[var(--game-mint-bg)] text-[var(--game-mint-text)]"
                       >
                         میزبان
                       </Badge>
                     ) : null}
                   </span>
-                  <span className="text-sm text-muted-foreground">
-                    {p.isReady ? "آماده" : "در انتظار"}
+                  <span
+                    className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold ${p.isReady ? "bg-[var(--game-green)]/25 text-[var(--game-green-dark)] dark:text-[var(--game-green)]" : "bg-muted text-muted-foreground"}`}
+                  >
+                    {p.isReady ? "آماده ✓" : "در انتظار"}
                   </span>
                 </CardContent>
               </Card>
@@ -303,25 +317,24 @@ export function LobbyClient({ roomCode }: { roomCode: string }) {
       </section>
 
       {state.status === "finished" && state.lastFinishedGameId ? (
-        <Alert className="mb-6 border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/40">
+        <Alert className="mb-6 border-amber-400/35 bg-gradient-to-br from-amber-50 to-orange-50/80 dark:from-amber-950/40 dark:to-orange-950/20">
           <AlertDescription className="flex flex-col gap-3 text-foreground">
-            <span className="font-medium">این بازی به پایان رسیده است.</span>
+            <span className="font-bold">این بازی به پایان رسیده است.</span>
             <Button
-              render={
-                <Link href={`/results/${state.lastFinishedGameId}`} />
-              }
+              render={<Link href={`/results/${state.lastFinishedGameId}`} />}
               nativeButton={false}
-              className="h-10 w-full bg-teal-600 text-white hover:bg-teal-700 dark:bg-teal-700 dark:hover:bg-teal-600"
+              variant="game"
+              className="w-full"
             >
               مشاهده نتایج
             </Button>
             {isHost ? (
               <Button
                 type="button"
-                variant="outline"
+                variant="secondary"
                 disabled={busy}
                 onClick={() => void replayLobby()}
-                className="h-10 w-full"
+                className="w-full"
               >
                 بازی دوباره (بازنشانی لابی)
               </Button>
@@ -333,27 +346,29 @@ export function LobbyClient({ roomCode }: { roomCode: string }) {
       <div className="flex flex-col gap-3 sm:flex-row">
         <Button
           type="button"
+          variant="gameMint"
           onClick={() => void toggleReady()}
           disabled={busy || !me || state.status === "finished"}
-          className="h-10 flex-1 bg-teal-600 text-white hover:bg-teal-700 dark:bg-teal-700 dark:hover:bg-teal-600"
+          className="flex-1"
         >
-          {me?.isReady ? "لغو آمادگی" : "من آماده‌ام"}
+          {me?.isReady ? "لغو آمادگی" : "من آماده‌ام ✓"}
         </Button>
         {isHost ? (
           <Button
             type="button"
-            variant="outline"
+            variant="gameWarm"
             onClick={() => void startGame()}
             disabled={!canStart || busy || state.status === "finished"}
-            className="h-10 flex-1 border-2 border-teal-600 text-teal-700 dark:border-teal-500 dark:text-teal-300"
+            className="flex-1"
           >
-            شروع بازی
+            🎮 شروع بازی
           </Button>
         ) : null}
       </div>
 
-      <p className="mt-6 text-sm text-muted-foreground">
-        حداقل {faDigits(state.minPlayersToStart)} بازیکن و آمادگی همه برای شروع لازم است.
+      <p className="mt-6 rounded-xl bg-[var(--game-input)]/50 px-3 py-2 text-center text-xs font-medium text-muted-foreground dark:bg-[var(--game-input)]/25 sm:text-sm">
+        حداقل {faDigits(state.minPlayersToStart)} بازیکن و آمادگی همه برای شروع
+        لازم است.
       </p>
     </SiteShell>
   );

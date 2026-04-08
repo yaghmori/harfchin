@@ -40,10 +40,15 @@ export default function CreateRoomPage() {
 
   return (
     <SiteShell>
-      <h1 className="mb-6 text-2xl font-bold">ساخت اتاق</h1>
-      <Card className="max-w-md">
-        <CardHeader>
-          <CardTitle className="text-base">جزئیات اتاق</CardTitle>
+      <h1 className="mb-2 text-2xl font-black tracking-tight sm:text-3xl">
+        ساخت اتاق
+      </h1>
+      <p className="mb-6 text-sm font-medium text-muted-foreground">
+        شما میزبان می‌شوید؛ بعداً کد اتاق را برای بقیه می‌فرستید.
+      </p>
+      <Card className="max-w-md border-[var(--game-warm-text)]/20">
+        <CardHeader className="border-b border-border/40 bg-[var(--game-warm-bg)]/50 pb-3 dark:bg-[var(--game-warm-bg)]/20">
+          <CardTitle className="text-base font-bold">جزئیات اتاق</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={onSubmit} className="flex flex-col gap-4">
@@ -105,7 +110,8 @@ export default function CreateRoomPage() {
             <Button
               type="submit"
               disabled={loading}
-              className="h-10 w-full bg-teal-600 text-white hover:bg-teal-700 dark:bg-teal-700 dark:hover:bg-teal-600"
+              variant="game"
+              className="w-full"
             >
               {loading ? "در حال ساخت…" : "ساخت اتاق"}
             </Button>

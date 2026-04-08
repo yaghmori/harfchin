@@ -2,7 +2,7 @@ import type {
   GameStatus,
   RoomStatus,
   RoundStatus,
-} from "@/generated/prisma/client";
+} from "@/generated/prisma";
 import { AppError } from "@/lib/errors";
 
 export function assertRoomCanStartGame(status: RoomStatus): void {

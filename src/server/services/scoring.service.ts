@@ -6,6 +6,7 @@ import * as answerRepo from "@/server/repositories/answer.repository";
 import * as categoryRepo from "@/server/repositories/category.repository";
 import { assertRoundCanScore } from "@/server/rules/game-transitions";
 import { AppError } from "@/lib/errors";
+import { emitRoomUpdate } from "@/server/realtime/room-events";
 
 export async function scoreCurrentRound(roomCode: string, hostUserId: string) {
   const room = await prisma.room.findUnique({
@@ -55,7 +56,11 @@ export async function scoreCurrentRound(roomCode: string, hostUserId: string) {
         };
       });
 
-      const scoresMap = scoreCategoryAnswers(entries);
+      const scoresMap = scoreCategoryAnswers(entries, {
+        pointsSoloBonus: cat.pointsSoloBonus,
+        pointsUnique: cat.pointsUnique,
+        pointsDuplicate: cat.pointsDuplicate,
+      });
 
       for (const ans of catAnswers) {
         const s = scoresMap.get(ans.roomPlayerId) ?? 0;
@@ -81,5 +86,6 @@ export async function scoreCurrentRound(roomCode: string, hostUserId: string) {
     });
   });
 
+  emitRoomUpdate(room.code);
   return { alreadyScored: false as const, roundId: round.id };
 }

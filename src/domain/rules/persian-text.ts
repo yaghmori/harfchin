@@ -2,7 +2,7 @@
  * Maps common Arabic presentation forms to Persian; ی/ک unification; whitespace cleanup.
  */
 export function normalizePersianText(input: string): string {
-  let s = input.normalize("NFC");
+  const s = input.normalize("NFC");
   const map: Record<string, string> = {
     ي: "ی",
     ى: "ی",

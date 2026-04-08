@@ -5,30 +5,52 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --card: oklch(1 0 0);
-  --muted: oklch(0.97 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted-foreground: oklch(0.556 0 0);
+  /* Game palette (reference UI) */
+  --game-bg: #f3f4f9;
+  --game-bg-gradient-end: #e8eaf5;
+  --game-card: #ffffff;
+  --game-input: #e5e7f2;
+  --game-blue: #56b1f1;
+  --game-blue-dark: #3a96dc;
+  --game-green: #7ed9a2;
+  --game-green-dark: #5bc98a;
+  --game-gold: #f9c87c;
+  --game-gold-deep: #f0a84a;
+  --game-timer-bg: #e8e4f5;
+  --game-warm-bg: #ffd8c2;
+  --game-warm-text: #c2410c;
+  --game-mint-bg: #c8f5dc;
+  --game-mint-text: #166534;
+  --game-sky-bg: #c5e7ff;
+  --game-sky-text: #1d4ed8;
+  --game-shadow: 0 8px 28px -8px rgb(80 90 140 / 0.18);
+  --game-shadow-sm: 0 4px 14px -4px rgb(80 90 140 / 0.14);
+  --game-btn-depth: 0 4px 0 0 rgb(30 100 160 / 0.35);
+
+  --card: var(--game-card);
+  --muted: #eef0f8;
+  --accent: var(--game-input);
+  --accent-foreground: #1e293b;
+  --background: var(--game-bg);
+  --foreground: #1e293b;
+  --card-foreground: #1e293b;
+  --popover: var(--game-card);
+  --popover-foreground: #1e293b;
+  --primary: var(--game-blue);
+  --primary-foreground: #ffffff;
+  --secondary: var(--game-input);
+  --secondary-foreground: #1e293b;
+  --muted-foreground: #64748b;
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --border: rgb(148 163 184 / 0.22);
+  --input: var(--game-input);
+  --ring: var(--game-blue);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
+  --radius: 1rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -44,6 +66,20 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
   --font-heading: var(--font-sans);
+  --color-game-bg: var(--game-bg);
+  --color-game-blue: var(--game-blue);
+  --color-game-blue-dark: var(--game-blue-dark);
+  --color-game-green: var(--game-green);
+  --color-game-green-dark: var(--game-green-dark);
+  --color-game-gold: var(--game-gold);
+  --color-game-input: var(--game-input);
+  --color-game-timer-bg: var(--game-timer-bg);
+  --color-game-warm-bg: var(--game-warm-bg);
+  --color-game-warm-text: var(--game-warm-text);
+  --color-game-mint-bg: var(--game-mint-bg);
+  --color-game-mint-text: var(--game-mint-text);
+  --color-game-sky-bg: var(--game-sky-bg);
+  --color-game-sky-text: var(--game-sky-text);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -73,21 +109,43 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
+  --radius-sm: calc(var(--radius) * 0.55);
+  --radius-md: calc(var(--radius) * 0.75);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  --radius-xl: calc(var(--radius) * 1.35);
+  --radius-2xl: calc(var(--radius) * 1.75);
+  --radius-3xl: calc(var(--radius) * 2.15);
+  --radius-4xl: calc(var(--radius) * 2.55);
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --card: #1e293b;
-    --muted: #94a3b8;
-    --accent: #2dd4bf;
-    --accent-foreground: #0f172a;
+  :root:not(.light) {
+    --game-bg: #1a1d2e;
+    --game-bg-gradient-end: #12151f;
+    --game-card: #252836;
+    --game-input: #343a4f;
+    --game-timer-bg: #2d3250;
+    --muted: #2d3250;
+    --accent: #343a4f;
+    --accent-foreground: #e2e8f0;
+    --background: var(--game-bg);
+    --foreground: #e2e8f0;
+    --card-foreground: #e2e8f0;
+    --popover: var(--game-card);
+    --popover-foreground: #e2e8f0;
+    --secondary: #343a4f;
+    --secondary-foreground: #e2e8f0;
+    --muted-foreground: #94a3b8;
+    --border: rgb(148 163 184 / 0.15);
+    --game-shadow: 0 12px 40px -10px rgb(0 0 0 / 0.45);
+    --game-shadow-sm: 0 6px 20px -6px rgb(0 0 0 / 0.35);
+    --game-btn-depth: 0 4px 0 0 rgb(0 0 0 / 0.4);
+    --game-warm-bg: #5c3d2e;
+    --game-warm-text: #fdba74;
+    --game-mint-bg: #1e3a2f;
+    --game-mint-text: #86efac;
+    --game-sky-bg: #1e3a5c;
+    --game-sky-text: #93c5fd;
   }
 }
 
@@ -102,37 +160,128 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --game-bg: #1a1d2e;
+  --game-bg-gradient-end: #12151f;
+  --game-card: #252836;
+  --game-input: #343a4f;
+  --game-timer-bg: #2d3250;
+  --game-shadow: 0 12px 40px -10px rgb(0 0 0 / 0.45);
+  --game-shadow-sm: 0 6px 20px -6px rgb(0 0 0 / 0.35);
+  --game-btn-depth: 0 4px 0 0 rgb(0 0 0 / 0.4);
+  --game-warm-bg: #5c3d2e;
+  --game-warm-text: #fdba74;
+  --game-mint-bg: #1e3a2f;
+  --game-mint-text: #86efac;
+  --game-sky-bg: #1e3a5c;
+  --game-sky-text: #93c5fd;
+  --background: var(--game-bg);
+  --foreground: #e2e8f0;
+  --card: var(--game-card);
+  --card-foreground: #e2e8f0;
+  --popover: var(--game-card);
+  --popover-foreground: #e2e8f0;
+  --primary: var(--game-blue);
+  --primary-foreground: #ffffff;
+  --secondary: var(--game-input);
+  --secondary-foreground: #e2e8f0;
+  --muted: #2d3250;
+  --muted-foreground: #94a3b8;
+  --accent: var(--game-input);
+  --accent-foreground: #e2e8f0;
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --border: rgb(148 163 184 / 0.15);
+  --input: var(--game-input);
+  --ring: var(--game-blue);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar: #252836;
+  --sidebar-foreground: #e2e8f0;
+  --sidebar-primary: var(--game-blue);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #343a4f;
+  --sidebar-accent-foreground: #e2e8f0;
+  --sidebar-border: rgb(148 163 184 / 0.15);
+  --sidebar-ring: var(--game-blue);
+}
+
+@layer utilities {
+  .game-surface {
+    background: linear-gradient(
+      180deg,
+      var(--game-bg) 0%,
+      var(--game-bg-gradient-end) 100%
+    );
+  }
+
+  .game-card-elevated {
+    box-shadow: var(--game-shadow-sm);
+  }
+
+  .game-menu-clouds {
+    position: relative;
+    isolation: isolate;
+  }
+
+  .game-menu-clouds::before,
+  .game-menu-clouds::after {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    border-radius: 9999px;
+    background: rgb(255 255 255 / 0.65);
+    pointer-events: none;
+  }
+
+  .game-menu-clouds::before {
+    width: 120px;
+    height: 48px;
+    top: 8%;
+    inset-inline-start: 5%;
+    filter: blur(0.5px);
+  }
+
+  .game-menu-clouds::after {
+    width: 90px;
+    height: 36px;
+    top: 18%;
+    inset-inline-end: 8%;
+    filter: blur(0.5px);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not(.light) .game-menu-clouds::before,
+    :root:not(.light) .game-menu-clouds::after {
+      background: rgb(255 255 255 / 0.06);
+    }
+  }
+
+  .dark .game-menu-clouds::before,
+  .dark .game-menu-clouds::after {
+    background: rgb(255 255 255 / 0.06);
+  }
+
+  .animate-game-timer {
+    animation: game-timer-tick 1s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-game-timer {
+      animation: none;
+    }
+  }
+}
+
+@keyframes game-timer-tick {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
 }
 
 @layer base {

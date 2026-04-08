@@ -7,6 +7,7 @@ import * as playerRepo from "@/server/repositories/player.repository";
 import * as answerRepo from "@/server/repositories/answer.repository";
 import * as categoryRepo from "@/server/repositories/category.repository";
 import { validateAnswer } from "@/server/services/validation.service";
+import { emitRoomUpdate } from "@/server/realtime/room-events";
 import {
   assertGameStartable,
   assertRoomCanStartGame,
@@ -33,7 +34,7 @@ function roundTimeEnded(
 async function maybeAutoEndRound(roundId: string): Promise<void> {
   const round = await prisma.round.findUnique({
     where: { id: roundId },
-    include: { game: true },
+    include: { game: { include: { room: true } } },
   });
   if (!round || round.status !== "active") return;
   const endsMs = round.startedAt.getTime() + round.game.roundTimeSec * 1000;
@@ -48,6 +49,7 @@ async function maybeAutoEndRound(roundId: string): Promise<void> {
       data: { status: "review" },
     }),
   ]);
+  emitRoomUpdate(round.game.room.code);
 }
 
 export async function startGame(params: { userId: string; roomCode: string }) {
@@ -110,6 +112,7 @@ export async function startGame(params: { userId: string; roomCode: string }) {
     return g;
   });
 
+  emitRoomUpdate(params.roomCode);
   return { gameId: game.id };
 }
 
@@ -144,6 +147,7 @@ export async function finishRound(params: { userId: string; roomCode: string }) 
     }),
   ]);
 
+  emitRoomUpdate(params.roomCode);
   return { roundId: round.id };
 }
 
@@ -196,6 +200,7 @@ export async function submitAnswers(params: {
     });
   }
 
+  emitRoomUpdate(params.roomCode);
   return { ok: true as const };
 }
 
@@ -225,6 +230,7 @@ export async function nextRound(params: { userId: string; roomCode: string }) {
         data: { status: "finished" },
       }),
     ]);
+    emitRoomUpdate(params.roomCode);
     return { finished: true as const, gameId: game.id };
   }
 
@@ -255,6 +261,7 @@ export async function nextRound(params: { userId: string; roomCode: string }) {
     });
   });
 
+  emitRoomUpdate(params.roomCode);
   return { finished: false as const, gameId: game.id };
 }
 

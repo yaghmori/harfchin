@@ -8,6 +8,7 @@ import * as roomRepo from "@/server/repositories/room.repository";
 import * as playerRepo from "@/server/repositories/player.repository";
 import * as gameRepo from "@/server/repositories/game.repository";
 import * as userRepo from "@/server/repositories/user.repository";
+import { emitRoomUpdate } from "@/server/realtime/room-events";
 
 function normalizeDisplayName(name: string): string {
   const t = name.trim();
@@ -86,6 +87,7 @@ export async function joinRoom(params: {
   if (existing) {
     await playerRepo.updateRoomPlayer(existing.id, { displayName });
     await userRepo.updateUserName(params.userId, displayName);
+    emitRoomUpdate(room.code);
     return { roomCode: room.code, roomId: room.id };
   }
 
@@ -113,6 +115,7 @@ export async function joinRoom(params: {
   });
   await userRepo.updateUserName(params.userId, displayName);
 
+  emitRoomUpdate(room.code);
   return { roomCode: room.code, roomId: room.id };
 }
 
@@ -128,6 +131,7 @@ export async function setReady(params: {
   if (!rp) throw new AppError("FORBIDDEN", "شما عضو این اتاق نیستید.");
 
   await playerRepo.updateRoomPlayer(rp.id, { isReady: params.isReady });
+  emitRoomUpdate(params.roomCode);
 }
 
 export async function updateRoomSettings(params: {
@@ -167,6 +171,7 @@ export async function updateRoomSettings(params: {
   }
 
   await roomRepo.updateRoom(room.id, data);
+  emitRoomUpdate(params.roomCode);
 }
 
 export async function leaveRoom(params: { userId: string; roomCode: string }) {
@@ -182,6 +187,7 @@ export async function leaveRoom(params: { userId: string; roomCode: string }) {
   const remaining = await roomRepo.findRoomByCode(room.code);
   if (!remaining || remaining.players.length === 0) {
     await roomRepo.deleteRoom(room.id);
+    emitRoomUpdate(params.roomCode);
     return;
   }
 
@@ -196,6 +202,7 @@ export async function leaveRoom(params: { userId: string; roomCode: string }) {
       });
     }
   }
+  emitRoomUpdate(params.roomCode);
 }
 
 export async function replayRoom(params: { userId: string; roomCode: string }) {
@@ -214,6 +221,7 @@ export async function replayRoom(params: { userId: string; roomCode: string }) {
 
   await roomRepo.updateRoom(room.id, { status: "waiting" });
   await playerRepo.resetReadyForRoom(room.id);
+  emitRoomUpdate(params.roomCode);
 }
 
 export async function getRoomState(roomCode: string) {

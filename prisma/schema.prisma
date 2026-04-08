@@ -104,12 +104,18 @@ model Round {
 }
 
 model Category {
-  id        String        @id @default(uuid())
-  key       String        @unique
-  title     String
-  sortOrder Int
-  isActive  Boolean       @default(true)
-  answers   RoundAnswer[]
+  id                String        @id @default(uuid())
+  key               String        @unique
+  title             String
+  sortOrder         Int
+  isActive          Boolean       @default(true)
+  /** Only one player has a valid answer in this category → bonus. */
+  pointsSoloBonus   Int           @default(32)
+  /** Valid answer unique among groups when 2+ players submitted valid answers. */
+  pointsUnique      Int           @default(16)
+  /** Same normalized answer as at least one other valid submission. */
+  pointsDuplicate   Int           @default(8)
+  answers           RoundAnswer[]
 }
 
 model RoundAnswer {

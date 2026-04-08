@@ -1,23 +1,17 @@
 "use client";
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { POLL_INTERVAL_MS } from "@/lib/constants";
-import { faDigits } from "@/lib/format";
-import { apiGet, apiPost } from "@/features/api/client";
 import { SiteShell } from "@/components/layout/SiteShell";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { apiGet, apiPost } from "@/features/api/client";
+import { POLL_INTERVAL_MS } from "@/lib/constants";
+import { faDigits } from "@/lib/format";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
 
 type AnswerRow = {
   categoryKey: string;
@@ -56,9 +50,80 @@ type GamePayload = {
     endsAt: string;
   } | null;
   players: PlayerRow[];
-  leaderboard: { roomPlayerId: string; displayName: string; totalScore: number }[];
+  leaderboard: {
+    roomPlayerId: string;
+    displayName: string;
+    totalScore: number;
+  }[];
   categories: { key: string; title: string }[];
 };
+
+function TimerGlyph({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden
+    >
+      <circle
+        cx="12"
+        cy="14"
+        r="7.5"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        className="text-[var(--game-blue)]"
+      />
+      <path
+        d="M12 10v3.2l2.2 1.4"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        className="text-[var(--game-blue-dark)]"
+      />
+      <path
+        d="M9 4h6"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        className="text-[var(--game-blue)]"
+      />
+      <path
+        d="M12 4V2.5"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        className="text-[var(--game-blue)]"
+      />
+    </svg>
+  );
+}
+
+function RoundGlyph({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden
+    >
+      <circle
+        cx="12"
+        cy="12"
+        r="9"
+        fill="var(--game-gold)"
+        stroke="var(--game-gold-deep)"
+        strokeWidth="1.5"
+      />
+      <path
+        d="M12 8.2l1.2 2.5 2.7.4-2 1.9.5 2.7-2.4-1.3-2.4 1.3.5-2.7-2-1.9 2.7-.4L12 8.2z"
+        fill="var(--game-gold-deep)"
+      />
+    </svg>
+  );
+}
 
 export function GameClient({ roomCode }: { roomCode: string }) {
   const router = useRouter();
@@ -107,12 +172,17 @@ export function GameClient({ roomCode }: { roomCode: string }) {
     });
   }, [state?.categories]);
 
-  const secondsLeft = useMemo(() => {
-    if (!state?.round) return 0;
-    const end = new Date(state.round.endsAt).getTime();
-    const left = Math.max(0, Math.ceil((end - Date.now()) / 1000));
-    return left;
-  }, [state?.round, tick]);
+  const secondsLeft =
+    state?.round == null
+      ? 0
+      : Math.max(
+          0,
+          Math.ceil(
+            (new Date(state.round.endsAt).getTime() - Date.now()) / 1000,
+          ),
+        );
+
+  void tick;
 
   async function submitAnswers() {
     if (!state?.game) return;
@@ -184,7 +254,7 @@ export function GameClient({ roomCode }: { roomCode: string }) {
           render={<Link href="/" />}
           nativeButton={false}
           variant="link"
-          className="mt-4 h-auto px-0 text-teal-700 dark:text-teal-300"
+          className="mt-4 h-auto px-0"
         >
           خانه
         </Button>
@@ -195,7 +265,9 @@ export function GameClient({ roomCode }: { roomCode: string }) {
   if (!state?.game || !state.round) {
     return (
       <SiteShell>
-        <p className="text-muted-foreground">در حال اتصال به بازی…</p>
+        <p className="text-center text-muted-foreground">
+          در حال اتصال به بازی…
+        </p>
       </SiteShell>
     );
   }
@@ -216,12 +288,49 @@ export function GameClient({ roomCode }: { roomCode: string }) {
   function isDuplicate(catKey: string, normalized: string, isValid: boolean) {
     if (!isValid || !normalized) return false;
     const vals = answersForCategory(catKey)
-      .map(({ answer }) =>
-        answer?.isValid ? answer.normalizedValue : "",
-      )
+      .map(({ answer }) => (answer?.isValid ? answer.normalizedValue : ""))
       .filter(Boolean);
     return vals.filter((v) => v === normalized).length > 1;
   }
+
+  const timerUrgent = phase === "playing" && secondsLeft > 0 && secondsLeft <= 12;
+
+  const hud = (
+    <div className="flex items-stretch justify-between gap-2 sm:gap-3">
+      <div className="flex min-w-0 items-center gap-2 rounded-full border border-border/50 bg-card py-1.5 ps-2 pe-3 shadow-[var(--game-shadow-sm)]">
+        <RoundGlyph className="size-9 shrink-0" />
+        <div className="min-w-0 leading-tight">
+          <p className="text-[0.65rem] font-semibold text-muted-foreground">
+            دور
+          </p>
+          <p className="text-sm font-black tabular-nums text-[var(--game-gold-deep)] dark:text-[var(--game-gold)]">
+            {faDigits(round.roundNumber)}
+            <span className="text-muted-foreground">/</span>
+            {faDigits(game.totalRounds)}
+          </p>
+        </div>
+      </div>
+
+      <div
+        className="flex min-w-0 flex-1 items-center justify-center gap-2 rounded-2xl border border-[var(--game-blue)]/15 bg-[var(--game-timer-bg)] px-3 py-2 shadow-[inset_0_2px_6px_rgb(0_0_0/0.06)] sm:px-4 dark:shadow-[inset_0_2px_8px_rgb(0_0_0/0.25)]"
+        dir="ltr"
+      >
+        <TimerGlyph className="size-8 shrink-0 text-[var(--game-blue)]" />
+        <span
+          className={`text-3xl font-black tabular-nums tracking-tight text-[var(--game-blue-dark)] dark:text-[var(--game-blue)] sm:text-4xl ${timerUrgent ? "animate-game-timer" : ""}`}
+        >
+          {faDigits(secondsLeft)}
+        </span>
+      </div>
+
+      <div
+        className="flex size-[3.25rem] shrink-0 items-center justify-center rounded-2xl bg-gradient-to-b from-[var(--game-green)] to-[var(--game-green-dark)] text-2xl font-black text-white shadow-[0_4px_0_0_rgb(34_197_94/0.28)] sm:size-14 sm:text-3xl dark:shadow-[0_4px_0_0_rgb(0_0_0/0.35)]"
+        title="حرف دور"
+      >
+        {letter}
+      </div>
+    </div>
+  );
 
   return (
     <SiteShell>
@@ -231,89 +340,98 @@ export function GameClient({ roomCode }: { roomCode: string }) {
         </Alert>
       ) : null}
 
-      <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">دور {faDigits(round.roundNumber)}</h1>
-          <p className="text-muted-foreground">
-            از {faDigits(game.totalRounds)} دور · حرف:{" "}
-            <span className="text-3xl font-bold text-teal-600 dark:text-teal-300">
-              {letter}
+      <div className="mb-4 space-y-3">
+        {hud}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs font-medium text-muted-foreground sm:text-sm">
+            اتاق{" "}
+            <span className="font-mono font-bold text-foreground" dir="ltr">
+              {roomCode}
             </span>
           </p>
+          <Button
+            render={<Link href={`/lobby/${roomCode}`} />}
+            nativeButton={false}
+            variant="link"
+            className="h-auto px-2 py-1 text-xs sm:text-sm"
+          >
+            بازگشت به لابی
+          </Button>
         </div>
-        <Button
-          render={<Link href={`/lobby/${roomCode}`} />}
-          nativeButton={false}
-          variant="link"
-          className="h-auto px-0 text-sm text-teal-700 dark:text-teal-300"
-        >
-          بازگشت به لابی
-        </Button>
       </div>
 
       {phase === "playing" ? (
-        <section className="space-y-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-normal text-muted-foreground">
-                زمان باقی‌مانده
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <p className="text-4xl font-bold tabular-nums" dir="ltr">
-                {faDigits(secondsLeft)}
-              </p>
-            </CardContent>
-          </Card>
+        <section className="space-y-4 pb-10">
           <div className="grid gap-3">
             {g.categories.map((c) => (
-              <div key={c.key} className="space-y-2">
-                <Label htmlFor={`cat-${c.key}`}>{c.title}</Label>
-                <Input
-                  id={`cat-${c.key}`}
-                  value={form[c.key] ?? ""}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, [c.key]: e.target.value }))
-                  }
-                  className="h-10"
-                  dir="auto"
-                  autoComplete="off"
-                />
-              </div>
+              <Card
+                key={c.key}
+                className="gap-3 py-3 shadow-[var(--game-shadow-sm)]"
+              >
+                <CardHeader className="space-y-1 pb-0">
+                  <CardTitle className="text-base sm:text-lg">{c.title}</CardTitle>
+                  <p className="text-xs font-medium text-muted-foreground">
+                    (با حرف{" "}
+                    <span className="font-bold text-[var(--game-green-dark)] dark:text-[var(--game-green)]">
+                      {letter}
+                    </span>
+                    )
+                  </p>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <Input
+                    id={`cat-${c.key}`}
+                    value={form[c.key] ?? ""}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, [c.key]: e.target.value }))
+                    }
+                    dir="auto"
+                    autoComplete="off"
+                    placeholder="پاسخ خود را بنویسید…"
+                    className="h-12 text-base"
+                  />
+                </CardContent>
+              </Card>
             ))}
           </div>
-          <Button
-            type="button"
-            onClick={() => void submitAnswers()}
-            disabled={busy}
-            className="h-10 w-full bg-teal-600 text-white hover:bg-teal-700 dark:bg-teal-700 dark:hover:bg-teal-600"
-          >
-            ذخیره پاسخ‌ها
-          </Button>
-          {isHost ? (
+
+          <div className="flex flex-col gap-3 pt-2">
             <Button
               type="button"
-              variant="outline"
-              onClick={() => void finishRound()}
+              variant="game"
+              onClick={() => void submitAnswers()}
               disabled={busy}
-              className="h-10 w-full"
+              className="w-full"
             >
-              پایان دور
+              ذخیره پاسخ‌ها
             </Button>
-          ) : null}
+            {isHost ? (
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => void finishRound()}
+                disabled={busy}
+                className="w-full"
+              >
+                پایان دور
+              </Button>
+            ) : null}
+          </div>
         </section>
       ) : null}
 
       {(phase === "review" || phase === "between" || phase === "finished") && (
-        <section className="space-y-6">
-          <h2 className="text-lg font-semibold">پاسخ‌ها و امتیاز</h2>
+        <section className="space-y-6 pb-8">
+          <h2 className="text-lg font-black text-foreground sm:text-xl">
+            پاسخ‌ها و امتیاز
+          </h2>
           {g.categories.map((c) => (
-            <Card key={c.key}>
-              <CardHeader className="pb-2">
+            <Card key={c.key} className="gap-3 py-3">
+              <CardHeader className="pb-0">
                 <CardTitle className="text-base">{c.title}</CardTitle>
               </CardHeader>
               <CardContent className="pt-0">
-                <ul className="space-y-2">
+                <ul className="space-y-2.5">
                   {answersForCategory(c.key).map(({ player, answer }) => {
                     const dup =
                       answer &&
@@ -325,26 +443,29 @@ export function GameClient({ roomCode }: { roomCode: string }) {
                     return (
                       <li
                         key={player.id}
-                        className="flex flex-wrap items-center justify-between gap-2 text-sm"
+                        className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-[var(--game-input)]/50 px-3 py-2.5 text-sm dark:bg-[var(--game-input)]/30"
                       >
-                        <span>{player.displayName}</span>
-                        <span className="text-muted-foreground">
-                          {answer?.value || "—"}
+                        <span className="font-semibold">{player.displayName}</span>
+                        <span className="text-end text-muted-foreground">
+                          <span className="text-foreground">{answer?.value || "—"}</span>
                           {answer && !answer.isValid ? (
-                            <Badge variant="destructive" className="me-2">
+                            <Badge variant="destructive" className="me-2 mt-1">
                               نامعتبر
                             </Badge>
                           ) : null}
                           {dup ? (
                             <Badge
                               variant="outline"
-                              className="me-2 border-amber-500/50 text-amber-700 dark:text-amber-400"
+                              className="me-2 mt-1 border-amber-500/55 bg-amber-500/10 text-amber-800 dark:text-amber-300"
                             >
                               تکراری
                             </Badge>
                           ) : null}
                           {phase !== "review" && answer ? (
-                            <span className="me-2 font-mono" dir="ltr">
+                            <span
+                              className="ms-1 font-mono font-bold text-[var(--game-blue-dark)] dark:text-[var(--game-blue)]"
+                              dir="ltr"
+                            >
                               {faDigits(answer.score)}
                             </span>
                           ) : null}
@@ -357,25 +478,52 @@ export function GameClient({ roomCode }: { roomCode: string }) {
             </Card>
           ))}
 
-          <Card>
-            <CardHeader className="pb-2">
+          <Card className="overflow-hidden py-0">
+            <CardHeader className="border-b border-border/40 bg-[var(--game-timer-bg)]/60 py-3 dark:bg-[var(--game-timer-bg)]/25">
               <CardTitle className="text-base">جدول امتیاز</CardTitle>
             </CardHeader>
-            <CardContent className="pt-0">
-              <ol className="space-y-1">
-                {g.leaderboard.map((row, i) => (
-                  <li
-                    key={row.roomPlayerId}
-                    className="flex justify-between text-sm"
-                  >
-                    <span>
-                      {faDigits(i + 1)}. {row.displayName}
-                    </span>
-                    <span className="font-mono" dir="ltr">
-                      {faDigits(row.totalScore)}
-                    </span>
-                  </li>
-                ))}
+            <CardContent className="py-4">
+              <ol className="space-y-2">
+                {g.leaderboard.map((row, i) => {
+                  const medal =
+                    i === 0
+                      ? "🥇"
+                      : i === 1
+                        ? "🥈"
+                        : i === 2
+                          ? "🥉"
+                          : null;
+                  return (
+                    <li
+                      key={row.roomPlayerId}
+                      className="flex items-center justify-between gap-2 rounded-xl border border-border/40 bg-card px-3 py-2 text-sm shadow-sm"
+                    >
+                      <span className="flex min-w-0 items-center gap-2">
+                        {medal ? (
+                          <span className="text-lg" aria-hidden>
+                            {medal}
+                          </span>
+                        ) : (
+                          <span
+                            className="w-6 text-center font-mono text-xs text-muted-foreground"
+                            dir="ltr"
+                          >
+                            {faDigits(i + 1)}
+                          </span>
+                        )}
+                        <span className="truncate font-semibold">
+                          {row.displayName}
+                        </span>
+                      </span>
+                      <span
+                        className="shrink-0 font-mono text-base font-bold text-[var(--game-blue-dark)] dark:text-[var(--game-blue)]"
+                        dir="ltr"
+                      >
+                        {faDigits(row.totalScore)}
+                      </span>
+                    </li>
+                  );
+                })}
               </ol>
             </CardContent>
           </Card>
@@ -383,9 +531,10 @@ export function GameClient({ roomCode }: { roomCode: string }) {
           {phase === "review" && isHost ? (
             <Button
               type="button"
+              variant="game"
               onClick={() => void scoreRound()}
               disabled={busy}
-              className="h-10 w-full bg-teal-600 text-white hover:bg-teal-700 dark:bg-teal-700 dark:hover:bg-teal-600"
+              className="w-full"
             >
               محاسبه امتیاز دور
             </Button>
@@ -394,9 +543,10 @@ export function GameClient({ roomCode }: { roomCode: string }) {
           {phase === "between" && isHost ? (
             <Button
               type="button"
+              variant="gameMuted"
               onClick={() => void nextRound()}
               disabled={busy}
-              className="h-10 w-full"
+              className="w-full"
             >
               دور بعد / پایان بازی
             </Button>
@@ -406,7 +556,8 @@ export function GameClient({ roomCode }: { roomCode: string }) {
             <Button
               render={<Link href={`/results/${game.id}`} />}
               nativeButton={false}
-              className="h-10 w-full bg-teal-600 text-white hover:bg-teal-700 dark:bg-teal-700 dark:hover:bg-teal-600"
+              variant="game"
+              className="w-full"
             >
               صفحه نتایج نهایی
             </Button>

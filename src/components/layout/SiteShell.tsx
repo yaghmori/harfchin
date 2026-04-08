@@ -1,23 +1,25 @@
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 export function SiteShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-full flex-col">
-      <header className="border-b border-border bg-card px-4 py-3 shadow-sm">
-        <div className="mx-auto flex max-w-3xl items-center justify-between">
+    <div className="game-surface flex min-h-full flex-col">
+      <header className="sticky top-0 z-20 border-b border-border/30 bg-card/75 px-4 py-3 shadow-[var(--game-shadow-sm)] backdrop-blur-md backdrop-saturate-150">
+        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
           <Button
             variant="ghost"
             render={<Link href="/" />}
             nativeButton={false}
-            className="h-auto px-0 text-lg font-semibold text-teal-700 hover:bg-transparent hover:text-teal-800 dark:text-teal-300 dark:hover:text-teal-200"
+            className="h-auto rounded-xl px-2 py-1.5 text-lg font-bold text-[var(--game-blue-dark)] hover:bg-[var(--game-blue)]/10 hover:text-[var(--game-blue-dark)] dark:text-[var(--game-blue)]"
           >
             حرفچین
           </Button>
-          <span className="text-sm text-muted-foreground">اسم و فامیل آنلاین</span>
+          <span className="max-w-[50%] truncate text-xs font-medium text-muted-foreground sm:text-sm">
+            اسم و فامیل آنلاین
+          </span>
         </div>
       </header>
-      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 py-8">
+      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 py-6 sm:py-8">
         {children}
       </main>
     </div>
