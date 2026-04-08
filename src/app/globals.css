@@ -146,37 +146,6 @@
   --radius-4xl: calc(var(--radius) * 2.55);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not(.light) {
-    --game-bg: #1a1d2e;
-    --game-bg-gradient-end: #12151f;
-    --game-card: #252836;
-    --game-input: #343a4f;
-    --game-timer-bg: #2d3250;
-    --muted: #2d3250;
-    --accent: #343a4f;
-    --accent-foreground: #e2e8f0;
-    --background: var(--game-bg);
-    --foreground: #e2e8f0;
-    --card-foreground: #e2e8f0;
-    --popover: var(--game-card);
-    --popover-foreground: #e2e8f0;
-    --secondary: #343a4f;
-    --secondary-foreground: #e2e8f0;
-    --muted-foreground: #94a3b8;
-    --border: rgb(148 163 184 / 0.15);
-    --game-shadow: 0 12px 40px -10px rgb(0 0 0 / 0.45);
-    --game-shadow-sm: 0 6px 20px -6px rgb(0 0 0 / 0.35);
-    --game-btn-depth: 0 4px 0 0 rgb(0 0 0 / 0.4);
-    --game-warm-bg: #5c3d2e;
-    --game-warm-text: #fdba74;
-    --game-mint-bg: #1e3a2f;
-    --game-mint-text: #86efac;
-    --game-sky-bg: #1e3a5c;
-    --game-sky-text: #93c5fd;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -185,54 +154,6 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
-}
-
-.dark {
-  --game-bg: #1a1d2e;
-  --game-bg-gradient-end: #12151f;
-  --game-card: #252836;
-  --game-input: #343a4f;
-  --game-timer-bg: #2d3250;
-  --game-shadow: 0 12px 40px -10px rgb(0 0 0 / 0.45);
-  --game-shadow-sm: 0 6px 20px -6px rgb(0 0 0 / 0.35);
-  --game-btn-depth: 0 4px 0 0 rgb(0 0 0 / 0.4);
-  --game-warm-bg: #5c3d2e;
-  --game-warm-text: #fdba74;
-  --game-mint-bg: #1e3a2f;
-  --game-mint-text: #86efac;
-  --game-sky-bg: #1e3a5c;
-  --game-sky-text: #93c5fd;
-  --background: var(--game-bg);
-  --foreground: #e2e8f0;
-  --card: var(--game-card);
-  --card-foreground: #e2e8f0;
-  --popover: var(--game-card);
-  --popover-foreground: #e2e8f0;
-  --primary: var(--game-blue);
-  --primary-foreground: #ffffff;
-  --secondary: var(--game-input);
-  --secondary-foreground: #e2e8f0;
-  --muted: #2d3250;
-  --muted-foreground: #94a3b8;
-  --accent: var(--game-input);
-  --accent-foreground: #e2e8f0;
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: rgb(148 163 184 / 0.15);
-  --input: var(--game-input);
-  --ring: var(--game-blue);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: #252836;
-  --sidebar-foreground: #e2e8f0;
-  --sidebar-primary: var(--game-blue);
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #343a4f;
-  --sidebar-accent-foreground: #e2e8f0;
-  --sidebar-border: rgb(148 163 184 / 0.15);
-  --sidebar-ring: var(--game-blue);
 }
 
 @layer utilities {
@@ -332,18 +253,6 @@
     top: 18%;
     inset-inline-end: 8%;
     filter: blur(0.5px);
-  }
-
-  @media (prefers-color-scheme: dark) {
-    :root:not(.light) .game-menu-clouds::before,
-    :root:not(.light) .game-menu-clouds::after {
-      background: rgb(255 255 255 / 0.06);
-    }
-  }
-
-  .dark .game-menu-clouds::before,
-  .dark .game-menu-clouds::after {
-    background: rgb(255 255 255 / 0.06);
   }
 
   .animate-game-timer {

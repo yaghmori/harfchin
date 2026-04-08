@@ -1,6 +1,6 @@
 import { AppProviders } from "@/components/providers/AppProviders";
 import { cn } from "@/lib/utils";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Vazirmatn } from "next/font/google";
 import "./globals.css";
 
@@ -16,6 +16,22 @@ export const metadata: Metadata = {
     template: "%s · حرفچی",
   },
   description: "بازی چندنفره اسم و فامیل با حروف فارسی",
+  applicationName: "حرفچی",
+  appleWebApp: {
+    capable: true,
+    title: "حرفچی",
+    statusBarStyle: "default",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#630ed4",
+  colorScheme: "light",
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({
@@ -27,7 +43,7 @@ export default function RootLayout({
     <html
       lang="fa"
       dir="rtl"
-      className={cn("h-full", vazirmatn.variable)}
+      className={cn("h-full light", vazirmatn.variable)}
       suppressHydrationWarning
     >
       <body className="min-h-full bg-background font-sans text-foreground antialiased">
