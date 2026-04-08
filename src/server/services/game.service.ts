@@ -383,13 +383,19 @@ export async function completeRound(params: {
   round = await gameRepo.findLatestRoundForGame(game.id);
   if (!round || round.status !== "active") {
     const latestG = await gameRepo.findLatestGameForRoom(room.id);
-    if (latestG?.status === "finished") {
+    if (!latestG) {
+      throw new AppError("BAD_STATE", "بازی یافت نشد.");
+    }
+    if (latestG.status === "finished") {
       return {
         outcome: "game_finished" as const,
         gameId: latestG.id,
       };
     }
-    return { outcome: "round_advanced" as const };
+    return {
+      outcome: "round_advanced" as const,
+      gameId: latestG.id,
+    };
   }
 
   const rp = await playerRepo.findRoomPlayer(room.id, params.userId);

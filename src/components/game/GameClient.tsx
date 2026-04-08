@@ -481,6 +481,28 @@ export function GameClient({ roomCode }: { roomCode: string }) {
     </>
   );
 
+  if (phase === "processing_round") {
+    return (
+      <div
+        className="flex min-h-dvh flex-col bg-ka-surface pb-24 text-ka-on-surface"
+        dir="rtl"
+      >
+        <div className="flex flex-1 flex-col items-center justify-center gap-4 px-5">
+          <div
+            className="size-12 animate-spin rounded-full border-4 border-ka-primary/20 border-t-ka-primary"
+            aria-hidden
+          />
+          <p className="max-w-sm text-center text-sm font-medium text-ka-on-surface-variant">
+            در حال پایان دور و محاسبه امتیاز…
+          </p>
+        </div>
+        <div className="fixed bottom-0 left-0 z-50 w-full">
+          <GameBottomNav active="game" />
+        </div>
+      </div>
+    );
+  }
+
   if (phase === "playing") {
     return (
       <div className="flex min-h-dvh flex-col bg-ka-surface text-ka-on-surface">
@@ -489,151 +511,14 @@ export function GameClient({ roomCode }: { roomCode: string }) {
     );
   }
 
-  const showScoresInRound = phase !== "review";
-
   return (
-    <div className="flex min-h-dvh flex-col bg-ka-surface pb-36 text-ka-on-surface">
-      <header className="sticky top-0 z-40 flex w-full items-center justify-between bg-white/80 px-5 py-4 shadow-[0_12px_32px_rgba(25,28,29,0.06)] backdrop-blur-xl dark:bg-zinc-950/80">
-        <div className="flex items-center gap-3">
-          <div
-            className="flex size-10 shrink-0 items-center justify-center rounded-full bg-ka-primary-fixed font-heading text-lg font-black text-ka-on-primary-fixed"
-            aria-hidden
-          >
-            {displayInitial}
-          </div>
-          <span className="font-heading text-lg font-black tracking-tight text-ka-primary">
-            حرفچین
-          </span>
-        </div>
-        <div className="flex items-center gap-1.5 rounded-full bg-ka-secondary-container px-3.5 py-1.5 font-heading text-sm font-semibold text-ka-on-secondary-container">
-          <span>{faDigits(myBoardScore)} امتیاز</span>
-          <Star className="size-4 fill-amber-600 text-amber-700" aria-hidden />
-        </div>
-      </header>
-
-      <main className="mx-auto w-full max-w-lg flex-1 space-y-5 px-5 pt-6">
-        {error ? (
-          <Alert variant="destructive">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        ) : null}
-
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-xs text-ka-on-surface-variant">
-            اتاق{" "}
-            <span className="font-mono font-semibold text-foreground" dir="ltr">
-              {roomCode}
-            </span>
-          </p>
-          <div className="flex items-center gap-2 rounded-full bg-ka-primary-fixed/35 px-4 py-2 font-heading text-sm font-black text-ka-on-primary-fixed">
-            <span>حرف</span>
-            <span className="text-lg">{letter}</span>
-          </div>
-        </div>
-
-        <Button
-          render={<Link href={`/lobby/${roomCode}`} />}
-          nativeButton={false}
-          variant="link"
-          className="h-auto px-0 text-sm text-ka-on-surface-variant"
-        >
-          بازگشت به لابی
-        </Button>
-
-        <section className="space-y-4">
-          <div className="text-center">
-            <h1 className="font-heading text-xl font-black text-ka-on-surface sm:text-2xl">
-              نتیجه این دور
-            </h1>
-            <p className="mt-1 text-sm font-medium text-ka-on-surface-variant">
-              دور {faDigits(round.roundNumber)} از {faDigits(game.totalRounds)}
-            </p>
-          </div>
-
-          <Card className="border-ka-outline-variant/40 ka-kinetic-shadow">
-            <CardHeader className="flex flex-row items-start justify-between gap-2 pb-2">
-              <div>
-                <CardTitle className="font-heading text-base text-ka-primary">
-                  جزئیات پاسخ‌ها
-                </CardTitle>
-                <p className="mt-0.5 text-xs text-ka-on-surface-variant">
-                  برای هر ردیف بازیکن را انتخاب کنید
-                </p>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-0 pt-0">
-              <ul className="divide-y divide-ka-outline-variant/35">
-                {g.categories.map((c) => {
-                  const Icon = categoryIcon(c.key);
-                  return (
-                    <li
-                      key={c.key}
-                      className="flex flex-col gap-3 py-4 first:pt-0 sm:flex-row sm:items-start sm:gap-4"
-                    >
-                      <span className="flex shrink-0 items-center gap-2.5 sm:w-[40%]">
-                        <Icon
-                          className="size-5 shrink-0 text-ka-primary"
-                          aria-hidden
-                        />
-                        <span className="text-xs font-bold text-ka-on-surface-variant">
-                          {c.title}
-                        </span>
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <CategoryPlayerTabs
-                          players={g.players}
-                          categoryKey={c.key}
-                          meRoomPlayerId={g.meRoomPlayerId}
-                          showScores={showScoresInRound}
-                          isDuplicate={isDuplicate}
-                        />
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            </CardContent>
-          </Card>
-
-          {phase === "review" && !isHost ? (
-            <p className="text-center text-sm text-ka-on-surface-variant">
-              منتظر محاسبه امتیاز توسط میزبان…
-            </p>
-          ) : null}
-          {phase === "between" && !isHost ? (
-            <p className="text-center text-sm text-ka-on-surface-variant">
-              منتظر شروع دور بعد توسط میزبان…
-            </p>
-          ) : null}
-
-          <div className="flex flex-col gap-3 pt-2">
-            {phase === "review" && isHost ? (
-              <Button
-                type="button"
-                variant="default"
-                onClick={() => void scoreRound()}
-                disabled={busy}
-                className="ka-kinetic-shadow-lg h-auto w-full rounded-full py-5 font-heading text-base font-black"
-              >
-                محاسبه امتیاز دور
-              </Button>
-            ) : null}
-
-            {phase === "between" && isHost ? (
-              <Button
-                type="button"
-                variant="default"
-                onClick={() => void nextRound()}
-                disabled={busy}
-                className="ka-kinetic-shadow-lg h-auto w-full rounded-full py-5 font-heading text-base font-black"
-              >
-                دور بعد
-              </Button>
-            ) : null}
-          </div>
-        </section>
-      </main>
-
+    <div
+      className="flex min-h-dvh flex-col items-center justify-center bg-ka-surface px-5 text-ka-on-surface"
+      dir="rtl"
+    >
+      <p className="text-center text-sm text-ka-on-surface-variant">
+        وضعیت بازی به‌روزرسانی می‌شود…
+      </p>
       <div className="fixed bottom-0 left-0 z-50 w-full">
         <GameBottomNav active="game" />
       </div>
