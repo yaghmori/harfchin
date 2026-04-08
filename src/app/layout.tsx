@@ -1,9 +1,7 @@
 import { cn } from "@/lib/utils";
 import type { Metadata } from "next";
-import { Inter, Vazirmatn } from "next/font/google";
+import { Vazirmatn } from "next/font/google";
 import "./globals.css";
-
-const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 const vazirmatn = Vazirmatn({
   subsets: ["arabic", "latin"],
@@ -25,9 +23,9 @@ export default function RootLayout({
     <html
       lang="fa"
       dir="rtl"
-      className={cn("h-full", vazirmatn.variable, "font-sans", inter.variable)}
+      className={cn("h-full", vazirmatn.variable)}
     >
-      <body className="min-h-full bg-background font-[family-name:var(--font-vazirmatn),sans-serif] text-foreground antialiased">
+      <body className="min-h-full bg-background font-sans text-foreground antialiased">
         {children}
       </body>
     </html>

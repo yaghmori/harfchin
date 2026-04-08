@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { LogIn, UserRound } from "lucide-react";
 import Link from "next/link";
 
 export function SiteShell({ children }: { children: React.ReactNode }) {
@@ -14,9 +15,31 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
           >
             حرفچین
           </Button>
-          <span className="max-w-[50%] truncate text-xs font-medium text-muted-foreground sm:text-sm">
+          <span className="max-w-[40%] truncate text-xs font-medium text-muted-foreground sm:max-w-[50%] sm:text-sm">
             اسم و فامیل آنلاین
           </span>
+          <div className="flex shrink-0 items-center gap-0.5">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              render={<Link href="/login" />}
+              nativeButton={false}
+              className="text-muted-foreground hover:text-foreground"
+              aria-label="ورود"
+            >
+              <LogIn className="size-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              render={<Link href="/profile" />}
+              nativeButton={false}
+              className="text-muted-foreground hover:text-foreground"
+              aria-label="پروفایل"
+            >
+              <UserRound className="size-4" />
+            </Button>
+          </div>
         </div>
       </header>
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 py-6 sm:py-8">

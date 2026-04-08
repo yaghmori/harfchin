@@ -39,6 +39,17 @@ export default function HomePage() {
             </span>
             ورود با کد اتاق
           </Button>
+          <Button
+            render={<Link href="/rooms" />}
+            nativeButton={false}
+            variant="outline"
+            className="w-full justify-center gap-3 border-violet-300/60 bg-white/80 ps-4 text-violet-800 shadow-[var(--game-shadow-sm)] hover:bg-violet-50 dark:border-violet-500/30 dark:bg-card/80 dark:text-violet-200 dark:hover:bg-violet-950/40"
+          >
+            <span className="text-2xl" aria-hidden>
+              👥
+            </span>
+            روم‌های فعال
+          </Button>
         </div>
 
         <ul className="mx-auto max-w-md space-y-2.5 rounded-2xl border border-border/40 bg-card/80 px-4 py-4 text-sm font-medium text-muted-foreground shadow-[var(--game-shadow-sm)] backdrop-blur-sm">

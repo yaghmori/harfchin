@@ -30,19 +30,26 @@ enum RoundStatus {
 }
 
 model User {
-  id          String       @id @default(uuid())
-  name        String?
-  email       String?      @unique
-  isGuest     Boolean      @default(true)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  roomPlayers RoomPlayer[]
-  hostedRooms Room[]       @relation("RoomHost")
+  id               String            @id @default(uuid())
+  name             String?
+  email            String?           @unique
+  /** bcrypt hash; null for guests and OAuth-only (future). */
+  passwordHash     String?
+  isGuest          Boolean           @default(true)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  roomPlayers      RoomPlayer[]
+  hostedRooms      Room[]            @relation("RoomHost")
+  roomChatMessages RoomChatMessage[]
 }
 
 model Room {
   id                String       @id @default(uuid())
   code              String       @unique
+  /** Friendly name shown to players (e.g. «جمع دوستانه»). */
+  title             String       @default("")
+  /** When true, room is not listed publicly (join still works with code). */
+  isPrivate         Boolean      @default(false)
   hostId            String
   host              User         @relation("RoomHost", fields: [hostId], references: [id])
   status            RoomStatus   @default(waiting)
@@ -53,6 +60,19 @@ model Room {
   updatedAt         DateTime     @updatedAt
   players           RoomPlayer[]
   games             Game[]
+  chatMessages      RoomChatMessage[]
+}
+
+model RoomChatMessage {
+  id        String   @id @default(uuid())
+  roomId    String
+  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  body      String
+  createdAt DateTime @default(now())
+
+  @@index([roomId, createdAt])
 }
 
 model RoomPlayer {

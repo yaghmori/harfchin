@@ -1,0 +1,21 @@
+Lobby room chat — deployment requirements
+========================================
+
+1. Database
+   - Apply the new Prisma model `RoomChatMessage` to your PostgreSQL database:
+     - `pnpm db:push` (dev / prototype), or
+     - `pnpm db:migrate` with a new migration (recommended for production).
+   - Messages are removed when a room is deleted (onDelete: Cascade).
+
+2. Runtime
+   - No new npm packages; existing stack (Next.js, Prisma, SSE) is enough.
+   - Chat uses the same session cookie as the rest of the app (`getOrCreateSessionUserId`).
+   - After posting a message, the server calls `emitRoomUpdate` so other clients refresh via `/api/realtime/room` SSE (same process only).
+
+3. API
+   - GET `/api/room/chat?code=ROOMCODE` — returns `{ messages }` for current user if they are a room member.
+   - POST `/api/room/chat` — body `{ roomCode, body }`; body max length `MAX_CHAT_MESSAGE_LENGTH` (500) in `src/lib/constants.ts`.
+
+4. UI
+   - Lobby layout uses only existing shadcn UI primitives under `src/components/ui/` plus `lucide-react` icons (already a dependency).
+   - Lobby does not duplicate room rules (rounds / time / max players): those are set on the create-room flow. While the lobby is open in `waiting`, each member is automatically marked ready via `POST /api/room/ready` so the host’s «شروع بازی» can enable once everyone has the lobby open and minimum players is met.

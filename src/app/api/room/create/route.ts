@@ -9,7 +9,9 @@ export async function POST(req: Request) {
     const userId = await getOrCreateSessionUserId();
     const data = await roomService.createRoom({
       userId,
+      title: body.title,
       displayName: body.displayName,
+      isPrivate: body.isPrivate,
       maxPlayers: body.maxPlayers,
       draftTotalRounds: body.draftTotalRounds,
       draftRoundTimeSec: body.draftRoundTimeSec,

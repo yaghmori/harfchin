@@ -21,7 +21,12 @@ export const COOKIE_USER_ID = "hc_user_id";
 
 export const MAX_DISPLAY_NAME_LENGTH = 32;
 
+export const MAX_ROOM_TITLE_LENGTH = 64;
+
 export const MAX_ANSWER_LENGTH = 120;
+
+/** Max length for a single lobby / room chat message (UTF-8 text). */
+export const MAX_CHAT_MESSAGE_LENGTH = 500;
 
 /** Polling interval for game state when not using SSE. */
 export const POLL_INTERVAL_MS = 2500;

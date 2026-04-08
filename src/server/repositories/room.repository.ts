@@ -35,3 +35,20 @@ export async function updateRoom(
 export async function deleteRoom(roomId: string) {
   return prisma.room.delete({ where: { id: roomId } });
 }
+
+/** Active public rooms for the directory (joinable discovery). */
+export async function listDirectoryRooms(limit: number) {
+  return prisma.room.findMany({
+    where: {
+      status: { in: ["waiting", "playing"] },
+      isPrivate: false,
+    },
+    orderBy: { updatedAt: "desc" },
+    take: limit,
+    include: {
+      players: { orderBy: { joinedAt: "asc" } },
+      host: { select: { id: true, name: true } },
+      _count: { select: { players: true } },
+    },
+  });
+}

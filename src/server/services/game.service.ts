@@ -468,6 +468,52 @@ export async function getGameStateByGameId(gameId: string) {
     }))
     .sort((a, b) => b.totalScore - a.totalScore);
 
+  let players: {
+    id: string;
+    displayName: string;
+    isHost: boolean;
+    answers: {
+      categoryKey: string;
+      value: string;
+      normalizedValue: string;
+      isValid: boolean;
+      score: number;
+    }[];
+  }[] = [];
+
+  if (round) {
+    const allAnswers = await answerRepo.listAnswersForRound(round.id);
+    const answersByPlayer = new Map<
+      string,
+      {
+        categoryKey: string;
+        value: string;
+        normalizedValue: string;
+        isValid: boolean;
+        score: number;
+      }[]
+    >();
+
+    for (const a of allAnswers) {
+      const list = answersByPlayer.get(a.roomPlayerId) ?? [];
+      list.push({
+        categoryKey: a.category.key,
+        value: a.value,
+        normalizedValue: a.normalizedValue,
+        isValid: a.isValid,
+        score: a.score,
+      });
+      answersByPlayer.set(a.roomPlayerId, list);
+    }
+
+    players = game.room.players.map((p) => ({
+      id: p.id,
+      displayName: p.displayName,
+      isHost: p.isHost,
+      answers: answersByPlayer.get(p.id) ?? [],
+    }));
+  }
+
   return {
     hostUserId: game.room.hostId,
     roomCode: game.room.code,
@@ -488,5 +534,6 @@ export async function getGameStateByGameId(gameId: string) {
       : null,
     leaderboard,
     categories: categories.map((c) => ({ key: c.key, title: c.title })),
+    players,
   };
 }

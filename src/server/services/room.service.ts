@@ -1,9 +1,13 @@
 import {
+  MAX_CHAT_MESSAGE_LENGTH,
   MAX_DISPLAY_NAME_LENGTH,
+  MAX_ROOM_TITLE_LENGTH,
   MIN_PLAYERS_TO_START,
 } from "@/lib/constants";
+import type { DirectoryRoom } from "@/lib/room-directory";
 import { AppError } from "@/lib/errors";
 import { generateRoomCode } from "@/lib/room-code";
+import * as chatRepo from "@/server/repositories/room-chat.repository";
 import * as roomRepo from "@/server/repositories/room.repository";
 import * as playerRepo from "@/server/repositories/player.repository";
 import * as gameRepo from "@/server/repositories/game.repository";
@@ -30,12 +34,21 @@ async function uniqueRoomCode(): Promise<string> {
 
 export async function createRoom(params: {
   userId: string;
-  displayName: string;
+  title: string;
+  displayName?: string;
+  isPrivate?: boolean;
   maxPlayers?: number;
   draftTotalRounds?: number;
   draftRoundTimeSec?: number;
 }) {
-  const displayName = normalizeDisplayName(params.displayName);
+  const title = params.title.trim();
+  if (title.length === 0) {
+    throw new AppError("VALIDATION", "نام اتاق الزامی است.");
+  }
+  const displaySource = (params.displayName ?? title).trim();
+  const displayName = normalizeDisplayName(
+    displaySource.slice(0, MAX_DISPLAY_NAME_LENGTH),
+  );
   const maxPlayers = Math.min(
     16,
     Math.max(2, params.maxPlayers ?? 8),
@@ -51,8 +64,13 @@ export async function createRoom(params: {
 
   const code = await uniqueRoomCode();
 
+  const roomTitle = title.slice(0, MAX_ROOM_TITLE_LENGTH);
+  const isPrivate = params.isPrivate ?? false;
+
   const room = await roomRepo.createRoom({
     code,
+    title: roomTitle,
+    isPrivate,
     maxPlayers,
     draftTotalRounds,
     draftRoundTimeSec,
@@ -224,6 +242,84 @@ export async function replayRoom(params: { userId: string; roomCode: string }) {
   emitRoomUpdate(params.roomCode);
 }
 
+export async function listRoomsForDirectory(): Promise<DirectoryRoom[]> {
+  const rows = await roomRepo.listDirectoryRooms(50);
+  return rows.map((r) => {
+    const hostPlayer = r.players.find((p) => p.isHost);
+    const hostLabel =
+      hostPlayer?.displayName?.trim() ||
+      r.host.name?.trim() ||
+      "میزبان";
+    const title =
+      r.title.trim().length > 0 ? r.title.trim() : `اتاق ${r.code}`;
+    return {
+      roomCode: r.code,
+      title,
+      status: r.status as DirectoryRoom["status"],
+      maxPlayers: r.maxPlayers,
+      playerCount: r._count.players,
+      draftRoundTimeSec: r.draftRoundTimeSec,
+      draftTotalRounds: r.draftTotalRounds,
+      hostLabel,
+      players: r.players
+        .slice(0, 4)
+        .map((p) => ({ displayName: p.displayName })),
+    };
+  });
+}
+
+export async function listRoomChat(params: { userId: string; roomCode: string }) {
+  const room = await roomRepo.findRoomByCode(params.roomCode);
+  if (!room) throw new AppError("NOT_FOUND", "اتاق پیدا نشد.");
+
+  const rp = await playerRepo.findRoomPlayer(room.id, params.userId);
+  if (!rp) throw new AppError("FORBIDDEN", "شما عضو این اتاق نیستید.");
+
+  const rows = await chatRepo.listRoomChatMessages(room.id);
+  return rows.map((m) => {
+    const playerName = room.players.find((p) => p.userId === m.userId)
+      ?.displayName;
+    const displayName =
+      playerName?.trim() ||
+      m.user.name?.trim() ||
+      "بازیکن";
+    return {
+      id: m.id,
+      userId: m.userId,
+      displayName,
+      body: m.body,
+      createdAt: m.createdAt.toISOString(),
+    };
+  });
+}
+
+export async function postRoomChat(params: {
+  userId: string;
+  roomCode: string;
+  body: string;
+}) {
+  const room = await roomRepo.findRoomByCode(params.roomCode);
+  if (!room) throw new AppError("NOT_FOUND", "اتاق پیدا نشد.");
+
+  const rp = await playerRepo.findRoomPlayer(room.id, params.userId);
+  if (!rp) throw new AppError("FORBIDDEN", "شما عضو این اتاق نیستید.");
+
+  const body = params.body.trim();
+  if (body.length === 0) {
+    throw new AppError("VALIDATION", "پیام خالی است.");
+  }
+  if (body.length > MAX_CHAT_MESSAGE_LENGTH) {
+    throw new AppError("VALIDATION", "پیام خیلی طولانی است.");
+  }
+
+  await chatRepo.createRoomChatMessage({
+    roomId: room.id,
+    userId: params.userId,
+    body,
+  });
+  emitRoomUpdate(params.roomCode);
+}
+
 export async function getRoomState(roomCode: string) {
   const room = await roomRepo.findRoomByCodeWithGames(roomCode);
   if (!room) throw new AppError("NOT_FOUND", "اتاق پیدا نشد.");
@@ -233,6 +329,8 @@ export async function getRoomState(roomCode: string) {
 
   return {
     roomCode: room.code,
+    title: room.title,
+    isPrivate: room.isPrivate,
     status: room.status,
     hostId: room.hostId,
     maxPlayers: room.maxPlayers,
