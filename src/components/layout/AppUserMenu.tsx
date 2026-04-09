@@ -12,8 +12,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useLogoutMutation } from "@/hooks/api-mutations";
 import { LogIn, LogOut, PencilLine, UserPlus, UserRound } from "lucide-react";
-import { usePathname, useRouter } from "next/navigation";
 import Image from "next/image";
+import { usePathname, useRouter } from "next/navigation";
 import { useCallback } from "react";
 import { toast } from "sonner";
 
@@ -62,7 +62,7 @@ export function AppUserMenu({ mode, accountAvatarSrc }: AppUserMenuProps) {
             type="button"
             variant="ghost"
             size="icon"
-            className="size-10 rounded-full border border-border/70 p-0.5 hover:bg-accent/70 data-[popup-open]:bg-accent/70"
+            className="size-10 rounded-full border-2 border-muted-foreground p-0.5 hover:bg-accent/70 data-[popup-open]:bg-accent/70"
             aria-label={menuAria}
           />
         }

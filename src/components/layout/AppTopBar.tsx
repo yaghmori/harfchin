@@ -2,10 +2,11 @@
 
 import { AppUserMenu } from "@/components/layout/AppUserMenu";
 import type { ShellAuthMode } from "@/components/layout/shell-auth";
+import { CoinImage } from "@/components/media/CoinImage";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { DEFAULT_USER_AVATAR_SRC } from "@/lib/constants";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, Star } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -94,12 +95,10 @@ export function AppTopBar({ authMode, coins }: AppTopBarProps) {
               {showCoins ? (
                 <Link
                   href="/shop"
-                  className="inline-flex items-center gap-2 rounded-full bg-amber-300 px-4 py-2 text-sm font-black text-amber-950 shadow-[0_3px_12px_rgba(217,119,6,0.25)] transition-[transform,box-shadow] hover:brightness-105 active:scale-[0.99]"
+                  className="inline-flex items-center  gap-2 rounded-full border border-yellow-400 bg-yellow-300 px-3 py-1.5  font-black text-yellow-900 shadow-sm   transition-all hover:bg-yellow-400  active:scale-[0.99] duration-500"
                 >
+                  <CoinImage size={26} className="size-[1.625rem] " />
                   <span>{coinsLabel}</span>
-                  <span className="grid size-6 place-items-center rounded-full bg-amber-800/20">
-                    <Star className="size-4 fill-current" aria-hidden />
-                  </span>
                 </Link>
               ) : (
                 <Link
@@ -134,12 +133,10 @@ export function AppTopBar({ authMode, coins }: AppTopBarProps) {
               {showCoins ? (
                 <Link
                   href="/shop"
-                  className="inline-flex items-center gap-2 rounded-full bg-amber-300 px-4 py-2 text-sm font-black text-amber-950 shadow-[0_3px_12px_rgba(217,119,6,0.25)] transition-[transform,box-shadow] hover:brightness-105 active:scale-[0.99]"
+                  className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-yellow-500 px-3 py-1.5 text-sm font-black text-primary shadow-sm ring-1 ring-primary/15 transition-[transform,box-shadow,background-color] hover:bg-primary/18 hover:ring-primary/25 active:scale-[0.99] dark:bg-primary/20 dark:text-violet-100 dark:ring-primary/30 dark:hover:bg-primary/28"
                 >
+                  <CoinImage size={26} className="size-[1.625rem]" />
                   <span>{coinsLabel}</span>
-                  <span className="grid size-6 place-items-center rounded-full bg-amber-800/20">
-                    <Star className="size-4 fill-current" aria-hidden />
-                  </span>
                 </Link>
               ) : (
                 <Link

@@ -402,6 +402,8 @@ export function LobbyClient({ roomCode }: { roomCode: string }) {
           onSubmit={sendChat}
           chatBusy={chatBusy}
           chatDisabled={state.status === "finished"}
+          onRefreshMessages={() => void chatQuery.refetch()}
+          chatRefreshing={chatQuery.isFetching}
         />
       </main>
 

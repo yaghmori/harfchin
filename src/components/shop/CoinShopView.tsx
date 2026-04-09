@@ -1,5 +1,6 @@
 import { CoinShopFreeCoins } from "@/components/shop/CoinShopFreeCoins";
 import { CoinShopPackageList } from "@/components/shop/CoinShopPackageList";
+import { CoinImage } from "@/components/media/CoinImage";
 import type { ShopPackageRow } from "@/server/services/coin-shop.service";
 import { CreditCard, Lock, ShieldCheck } from "lucide-react";
 
@@ -15,14 +16,23 @@ type CoinShopViewProps = {
 export function CoinShopView({ balance, packages }: CoinShopViewProps) {
   return (
     <div className="flex flex-1 flex-col gap-8 pb-8">
-      <section className="rounded-[1.35rem] border border-border/70 bg-card p-7 text-center shadow-[0_8px_32px_rgba(15,23,42,0.06)]">
-        <div className="mx-auto mb-5 grid size-[4.5rem] place-items-center rounded-full bg-linear-to-b from-amber-300 to-amber-500 text-3xl font-black text-amber-950 shadow-inner ring-[5px] ring-amber-200/55 dark:from-amber-400 dark:to-amber-600 dark:ring-amber-800/45">
-          $
+      <section className="rounded-[1.35rem] border border-border/70 bg-card p-6 shadow-[0_8px_32px_rgba(15,23,42,0.06)] sm:p-7">
+        <div
+          className="mx-auto flex max-w-md items-center justify-center gap-4 sm:gap-6"
+          dir="rtl"
+        >
+          <div className="shrink-0 drop-shadow-[0_10px_28px_rgba(245,158,11,0.38)]">
+            <CoinImage size={96} className="size-24 sm:size-[6.5rem]" priority />
+          </div>
+          <div className="min-w-0 flex-1 text-start">
+            <p className="text-sm font-semibold text-muted-foreground">
+              موجودی فعلی شما
+            </p>
+            <p className="mt-1.5 text-3xl font-black tracking-tight text-foreground sm:text-[2rem]">
+              {formatFaCoins(balance)} سکه
+            </p>
+          </div>
         </div>
-        <p className="text-sm font-semibold text-muted-foreground">موجودی فعلی شما</p>
-        <p className="mt-2 text-3xl font-black tracking-tight text-foreground sm:text-[2rem]">
-          {formatFaCoins(balance)} سکه
-        </p>
       </section>
 
       <section className="space-y-3.5">

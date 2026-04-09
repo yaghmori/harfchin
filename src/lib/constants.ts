@@ -33,3 +33,6 @@ export const POLL_INTERVAL_MS = 2500;
 
 /** Default avatar for the signed-in user (top bar, profile). */
 export const DEFAULT_USER_AVATAR_SRC = "/avatar.svg";
+
+/** In-app coin currency artwork (balance, shop, rewards). */
+export const COIN_IMAGE_SRC = "/images/coin.png";
