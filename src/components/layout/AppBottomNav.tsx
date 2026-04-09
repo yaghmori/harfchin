@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { Home, LayoutGrid, LogIn, Trophy, UserRound } from "lucide-react";
+import { Home, LayoutGrid, LogIn, Trophy, UserRound, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
@@ -28,6 +28,12 @@ const BASE_ITEMS: NavItem[] = [
     href: "/ranking",
     label: "رتبه‌بندی",
     icon: Trophy,
+    match: "prefix",
+  },
+  {
+    href: "/friends",
+    label: "دوستان",
+    icon: Users,
     match: "prefix",
   },
 ];
@@ -98,7 +104,7 @@ export function AppBottomNav({ account }: AppBottomNavProps) {
               key={`${item.href}-${item.label}`}
               href={item.href}
               className={cn(
-                "flex min-w-[4.25rem] flex-col items-center gap-0.5 rounded-2xl px-2 py-1.5 transition-colors",
+                "flex min-w-17 flex-col items-center gap-0.5 rounded-2xl px-2 py-1.5 transition-colors",
                 active
                   ? "text-[#7E3AF2] dark:text-violet-300"
                   : "text-zinc-400 hover:text-violet-600 dark:text-zinc-500 dark:hover:text-violet-300",

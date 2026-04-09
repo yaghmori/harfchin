@@ -11,7 +11,7 @@ export async function GET(
     return new Response("Not Found", { status: 404 });
   }
   const dim = Number(sizeParam);
-  const radius = Math.round(dim * 0.22);
+  const logoUrl = new URL("../../../../public/logo.png", import.meta.url).toString();
 
   return new ImageResponse(
     (
@@ -22,10 +22,19 @@ export async function GET(
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "linear-gradient(135deg, #630ed4 0%, #7c3aed 100%)",
-          borderRadius: radius,
+          background: "white",
         }}
-      />
+      >
+        <img
+          src={logoUrl}
+          alt="حرف چی"
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+          }}
+        />
+      </div>
     ),
     {
       width: dim,

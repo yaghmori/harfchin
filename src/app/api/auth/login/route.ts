@@ -6,7 +6,10 @@ import { setSessionUserId } from "@/server/session";
 export async function POST(req: Request) {
   try {
     const body = loginBodySchema.parse(await req.json());
-    const user = await authService.authenticateUser(body.email, body.password);
+    const user = await authService.authenticateUser(
+      body.identifier,
+      body.password,
+    );
     await setSessionUserId(user.id);
     return jsonOk({
       user: {

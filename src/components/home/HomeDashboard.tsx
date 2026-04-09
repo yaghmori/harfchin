@@ -1,19 +1,12 @@
-import { Badge } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
 import { SectionHeader } from "@/components/home/SectionHeader";
 import { StatCard } from "@/components/home/StatCard";
+import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
 import type { DirectoryRoom } from "@/lib/room-directory";
 import { cn } from "@/lib/utils";
-import {
-  ChevronLeft,
-  Coins,
-  Medal,
-  Plus,
-  Rocket,
-  Trophy,
-  Users,
-  Zap,
-} from "lucide-react";
+import { Coins, Medal, Plus, Rocket, Trophy } from "lucide-react";
+import { PublicRoomJoinHomeRow } from "@/components/rooms/PublicRoomJoin";
+import Image from "next/image";
 import Link from "next/link";
 
 function formatFaInt(n: number) {
@@ -59,6 +52,17 @@ export function HomeDashboard({
 
   return (
     <div className="relative flex flex-1 flex-col gap-6 pb-4">
+      <section className="overflow-hidden">
+        <Image
+          src="/splash-screen.png"
+          alt="اسپلش اسکرین بازی حرف چی"
+          width={1024}
+          height={1024}
+          priority
+          className="h-auto w-full object-cover"
+        />
+      </section>
+
       <section className="space-y-1 pt-1 text-start">
         <h2 className="text-2xl font-black tracking-tight text-foreground">
           سلام {greetName}، خوش اومدی!
@@ -69,7 +73,7 @@ export function HomeDashboard({
       </section>
 
       {!isRegistered ? (
-        <section className="rounded-3xl border border-violet-200/90 bg-linear-to-br from-violet-50 via-white to-violet-50/80 p-4 shadow-[var(--game-shadow-sm)] dark:border-violet-900/50 dark:from-violet-950/40 dark:via-zinc-900 dark:to-violet-950/30">
+        <section className="rounded-3xl border border-violet-200/90 bg-linear-to-br from-violet-50 via-white to-violet-50/80 p-4 shadow-sm dark:border-violet-900/50 dark:from-violet-950/40 dark:via-zinc-900 dark:to-violet-950/30">
           <p className="text-sm font-semibold leading-relaxed text-foreground">
             ورود یا ثبت‌نام کنید تا امتیاز، سطح و تاریخچه بازی‌هاتان همیشه ذخیره
             بماند و بین گوشی و مرورگر همراهتان باشد.
@@ -97,25 +101,23 @@ export function HomeDashboard({
         </section>
       ) : null}
 
-      <div className="flex gap-3">
-        <StatCard
-          label="موجودی"
-          value={coinsStr}
-          icon={Coins}
-          iconWrapperClassName="bg-amber-100 dark:bg-amber-950/50 [&_svg]:text-amber-600 dark:[&_svg]:text-amber-400"
-        />
-        <StatCard
-          label="سطح شما"
-          value={`سطح ${levelStr}`}
-          icon={Medal}
-        />
-      </div>
+      {isRegistered ? (
+        <div className="flex gap-3">
+          <StatCard
+            label="موجودی"
+            value={coinsStr}
+            icon={Coins}
+            iconWrapperClassName="bg-amber-100 dark:bg-amber-950/50 [&_svg]:text-amber-600 dark:[&_svg]:text-amber-400"
+          />
+          <StatCard label="سطح شما" value={`سطح ${levelStr}`} icon={Medal} />
+        </div>
+      ) : null}
 
       <Link
         href="/rooms"
-        className="relative overflow-hidden rounded-3xl bg-gradient-to-l from-[#630ed4] to-[#7c3aed] p-5 text-white shadow-[0_12px_32px_rgba(99,14,212,0.35)] transition-[transform,filter] hover:brightness-[1.03] active:scale-[0.99]"
+        className="relative overflow-hidden rounded-3xl bg-linear-to-l from-primary to-primary/80 p-5 text-white shadow-[0_12px_32px_rgba(99,14,212,0.35)] transition-[transform,filter] hover:brightness-[1.03] active:scale-[0.99]"
       >
-        <Badge className="absolute end-3 top-3 border-0 bg-white/20 text-xs font-bold text-white backdrop-blur-sm hover:bg-white/25">
+        <Badge className="absolute inset-e-3 top-3 border-0 bg-white/20 text-xs font-bold text-white backdrop-blur-sm hover:bg-white/25">
           امتیاز ۲ برابر
         </Badge>
         <div className="flex items-center gap-4">
@@ -133,7 +135,7 @@ export function HomeDashboard({
           </div>
         </div>
         <Rocket
-          className="pointer-events-none absolute -bottom-2 -start-6 size-24 rotate-12 text-white/10"
+          className="pointer-events-none absolute -bottom-2 -inset-s-6 size-24 rotate-12 text-white/10"
           aria-hidden
         />
       </Link>
@@ -172,46 +174,18 @@ export function HomeDashboard({
               )}
             </li>
           ) : (
-            rooms.map((room, i) => {
-              const Icon = i % 2 === 0 ? Users : Zap;
-              const playing = room.status === "playing";
-              return (
-                <li key={room.roomCode}>
-                  <Link
-                    href={`/join?code=${encodeURIComponent(room.roomCode)}`}
-                    className="flex items-center gap-3 rounded-2xl bg-muted/80 p-4 transition-colors hover:bg-muted dark:bg-zinc-800/60 dark:hover:bg-zinc-800"
-                  >
-                    <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-card shadow-sm dark:bg-zinc-900">
-                      <Icon
-                        className="size-5 text-[#7E3AF2] dark:text-violet-400"
-                        aria-hidden
-                      />
-                    </span>
-                    <div className="min-w-0 flex-1 text-start">
-                      <p className="font-bold text-foreground">{room.title}</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        {playing ? "در حال بازی" : "در انتظار بازیکن"}
-                        {" · "}
-                        میزبان {room.hostLabel}
-                      </p>
-                    </div>
-                    <span className="flex shrink-0 items-center gap-1 text-sm font-bold text-muted-foreground">
-                      {formatFaInt(room.playerCount)}/
-                      {formatFaInt(room.maxPlayers)} بازیکن
-                      <ChevronLeft
-                        className="size-5 text-[#7E3AF2] opacity-80"
-                        aria-hidden
-                      />
-                    </span>
-                  </Link>
-                </li>
-              );
-            })
+            rooms.map((room, i) => (
+              <PublicRoomJoinHomeRow
+                key={room.roomCode}
+                room={room}
+                iconVariant={i % 2 === 0 ? "users" : "zap"}
+              />
+            ))
           )}
         </ul>
       </section>
 
-      <section className="rounded-3xl border border-violet-100/80 bg-card p-4 shadow-[var(--game-shadow-sm)] dark:border-violet-900/40 dark:bg-zinc-900/50">
+      <section className="rounded-3xl border border-violet-100/80 bg-card p-4 shadow-sm dark:border-violet-900/40 dark:bg-zinc-900/50">
         <div className="mb-4 flex items-start justify-between gap-2">
           <Badge
             variant="secondary"
@@ -223,10 +197,7 @@ export function HomeDashboard({
             <h2 className="text-base font-black text-foreground">
               رده‌بندی هفته
             </h2>
-            <Trophy
-              className="size-5 shrink-0 text-amber-500"
-              aria-hidden
-            />
+            <Trophy className="size-5 shrink-0 text-amber-500" aria-hidden />
           </div>
         </div>
         <ol className="space-y-3">
@@ -256,10 +227,15 @@ export function HomeDashboard({
                   {initial}
                 </div>
                 <div className="min-w-0 flex-1 text-start">
-                  <p className="truncate font-bold text-foreground">{row.name}</p>
+                  <p className="truncate font-bold text-foreground">
+                    {row.name}
+                  </p>
                   <p className="text-xs text-muted-foreground">امتیاز هفتگی</p>
                 </div>
-                <span className="shrink-0 font-black text-[#7E3AF2] dark:text-violet-300" dir="ltr">
+                <span
+                  className="shrink-0 font-black text-[#7E3AF2] dark:text-violet-300"
+                  dir="ltr"
+                >
                   {formatFaInt(row.score)}
                 </span>
               </li>
@@ -274,7 +250,7 @@ export function HomeDashboard({
       {isRegistered ? (
         <Link
           href="/create"
-          className="fixed bottom-24 end-4 z-40 flex size-14 items-center justify-center rounded-full bg-[#7E3AF2] text-white shadow-[0_12px_28px_rgba(126,58,242,0.45)] transition-transform hover:scale-105 active:scale-95 dark:bg-violet-600"
+          className="fixed inset-e-4 bottom-24 z-40 flex size-14 items-center justify-center rounded-full bg-primary text-white shadow-[0_12px_28px_rgba(126,58,242,0.45)] transition-transform hover:scale-105 active:scale-95 dark:bg-violet-600"
           aria-label="ساخت اتاق جدید"
         >
           <Plus className="size-7 stroke-[2.5]" aria-hidden />

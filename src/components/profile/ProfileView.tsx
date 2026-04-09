@@ -1,12 +1,15 @@
 import { AchievementMiniCard } from "@/components/profile/AchievementMiniCard";
 import { ProfileLogoutButton } from "@/components/profile/ProfileLogoutButton";
-import { Button, buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { DEFAULT_USER_AVATAR_SRC } from "@/lib/constants";
 import type { getProfileForUser } from "@/server/services/profile.service";
 import { Gamepad2, HelpCircle, PencilLine, UserRound } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 
-type ProfilePayload = NonNullable<Awaited<ReturnType<typeof getProfileForUser>>>;
+type ProfilePayload = NonNullable<
+  Awaited<ReturnType<typeof getProfileForUser>>
+>;
 
 const resultToneClass = {
   win: "text-amber-600 dark:text-amber-400",
@@ -27,7 +30,6 @@ function RecentIcon({ i }: { i: number }) {
 
 export function ProfileView({ data }: { data: ProfilePayload }) {
   const displayName = data.user.name?.trim() || "بازیکن";
-  const initial = displayName.charAt(0) || "?";
   const scoreStr = data.totalScore.toLocaleString("fa-IR");
   const gamesStr = data.gamesCount.toLocaleString("fa-IR");
   const winsStr = data.winsCount.toLocaleString("fa-IR");
@@ -36,32 +38,22 @@ export function ProfileView({ data }: { data: ProfilePayload }) {
   return (
     <div className="text-zinc-900 dark:bg-zinc-950 dark:text-zinc-50">
       <main className="mx-auto max-w-lg">
-        <div className="mb-6 flex items-center justify-between gap-3">
-          <span className="w-10 shrink-0" aria-hidden />
-          <h1 className="flex-1 text-center text-lg font-black text-zinc-900 dark:text-white">
-            پروفایل کاربری
-          </h1>
-          <Link
-            href="/profile/edit"
-            className={cn(
-              buttonVariants({ variant: "ghost", size: "icon-sm" }),
-              "shrink-0 text-[#7E3AF2] hover:bg-violet-100 dark:hover:bg-violet-950/50",
-            )}
-            aria-label="ویرایش پروفایل"
-          >
-            <PencilLine className="size-5" aria-hidden />
-          </Link>
-        </div>
+        <h1 className="sr-only">پروفایل</h1>
         <div className="flex flex-col items-center">
           <div className="relative mb-2">
             <div
               className="rounded-full bg-[conic-gradient(from_180deg,#7E3AF2,#f97316,#7E3AF2)] p-[3px] shadow-[0_12px_32px_rgba(126,58,242,0.25)]"
               aria-hidden
             >
-              <div className="flex size-28 items-center justify-center rounded-full bg-white dark:bg-zinc-900">
-                <span className="text-4xl font-black text-[#7E3AF2]">
-                  {initial}
-                </span>
+              <div className="relative size-28 overflow-hidden rounded-full bg-white dark:bg-zinc-900">
+                <Image
+                  src={DEFAULT_USER_AVATAR_SRC}
+                  alt={`آواتار ${displayName}`}
+                  fill
+                  className="object-cover"
+                  sizes="112px"
+                  unoptimized
+                />
               </div>
             </div>
             <span className="absolute -bottom-1 left-1/2 z-[1] -translate-x-1/2 rounded-full bg-amber-400 px-3 py-0.5 text-xs font-bold text-amber-950 shadow-sm">

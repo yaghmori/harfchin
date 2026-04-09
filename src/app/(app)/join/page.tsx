@@ -4,7 +4,7 @@ import { JoinRoomForm } from "./JoinRoomForm";
 
 function JoinFallback() {
   return (
-    <div className="min-h-dvh bg-ka-background" aria-busy aria-label="بارگذاری" />
+    <div className="min-h-dvh bg-background" aria-busy aria-label="بارگذاری" />
   );
 }
 

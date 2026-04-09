@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default async function ProfilePage() {
   const user = await getSessionUser();
-  if (!user?.email || user.isGuest || !user.passwordHash) {
+  if (!user || user.isGuest || !user.passwordHash) {
     redirect("/login?from=/profile");
   }
 

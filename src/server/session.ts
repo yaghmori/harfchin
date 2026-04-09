@@ -41,7 +41,7 @@ export async function clearSessionUserCookie(): Promise<void> {
  */
 export async function requireRegisteredUserId(): Promise<string> {
   const user = await getSessionUser();
-  if (!user?.email || user.isGuest || !user.passwordHash) {
+  if (!user || user.isGuest || !user.passwordHash) {
     throw new AppError("FORBIDDEN", "برای ادامه وارد شوید.", {
       status: 401,
     });

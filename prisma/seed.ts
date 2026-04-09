@@ -152,6 +152,113 @@ async function main() {
   console.log(
     `Seeded ${categories.length} categories.`,
   );
+
+  const coinPackages: Array<{
+    id: string;
+    slug: string;
+    title: string;
+    description: string;
+    coinAmount: number;
+    bonusAmount: number;
+    priceTomans: number;
+    imageUrl: string;
+    badgeText: string | null;
+    isFeatured: boolean;
+    sortOrder: number;
+  }> = [
+    {
+      id: "p1000000-0000-4000-8000-000000000001",
+      slug: "base",
+      title: "بسته پایه",
+      description: "شروعی کوچک اما هیجان‌انگیز",
+      coinAmount: 1000,
+      bonusAmount: 0,
+      priceTomans: 50_000,
+      imageUrl:
+        "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&q=80&auto=format&fit=crop",
+      badgeText: null,
+      isFeatured: false,
+      sortOrder: 1,
+    },
+    {
+      id: "p1000000-0000-4000-8000-000000000002",
+      slug: "bronze",
+      title: "بسته برنزی",
+      description: "گسترده‌ای پر از شانس",
+      coinAmount: 2500,
+      bonusAmount: 0,
+      priceTomans: 100_000,
+      imageUrl:
+        "https://images.unsplash.com/photo-1549298916-b41d501d3772?w=800&q=80&auto=format&fit=crop",
+      badgeText: null,
+      isFeatured: false,
+      sortOrder: 2,
+    },
+    {
+      id: "p1000000-0000-4000-8000-000000000003",
+      slug: "silver",
+      title: "بسته نقره‌ای",
+      description: "+ ۵۰۰ سکه هدیه رایگان",
+      coinAmount: 5000,
+      bonusAmount: 500,
+      priceTomans: 180_000,
+      imageUrl:
+        "https://images.unsplash.com/photo-1557683316-973673baf926?w=800&q=80&auto=format&fit=crop",
+      badgeText: "انتخاب هوشمندانه",
+      isFeatured: false,
+      sortOrder: 3,
+    },
+    {
+      id: "p1000000-0000-4000-8000-000000000004",
+      slug: "gold",
+      title: "گنجینه طلایی",
+      description: "تجربه‌ای بی‌نظیر برای بازیکنان حرفه‌ای",
+      coinAmount: 12000,
+      bonusAmount: 0,
+      priceTomans: 350_000,
+      imageUrl:
+        "https://images.unsplash.com/photo-1608256246200-53e635a5f5fe?w=800&q=80&auto=format&fit=crop",
+      badgeText: "ارزش استثنایی",
+      isFeatured: true,
+      sortOrder: 4,
+    },
+  ];
+
+  await prisma.$transaction(
+    coinPackages.map((p) =>
+      prisma.coinPackage.upsert({
+        where: { slug: p.slug },
+        create: {
+          id: p.id,
+          slug: p.slug,
+          title: p.title,
+          description: p.description,
+          coinAmount: p.coinAmount,
+          bonusAmount: p.bonusAmount,
+          priceTomans: p.priceTomans,
+          imageUrl: p.imageUrl,
+          badgeText: p.badgeText,
+          isFeatured: p.isFeatured,
+          sortOrder: p.sortOrder,
+          isActive: true,
+        },
+        update: {
+          title: p.title,
+          description: p.description,
+          coinAmount: p.coinAmount,
+          bonusAmount: p.bonusAmount,
+          priceTomans: p.priceTomans,
+          imageUrl: p.imageUrl,
+          badgeText: p.badgeText,
+          isFeatured: p.isFeatured,
+          sortOrder: p.sortOrder,
+          isActive: true,
+        },
+      }),
+    ),
+  );
+
+  console.log(`Seeded ${coinPackages.length} coin packages.`);
 }
 
 main()

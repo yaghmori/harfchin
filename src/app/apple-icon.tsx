@@ -4,6 +4,8 @@ export const size = { width: 180, height: 180 };
 export const contentType = "image/png";
 
 export default function AppleIcon() {
+  const logoUrl = new URL("../../public/logo.png", import.meta.url).toString();
+
   return new ImageResponse(
     (
       <div
@@ -13,10 +15,19 @@ export default function AppleIcon() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "linear-gradient(135deg, #630ed4 0%, #7c3aed 100%)",
-          borderRadius: 40,
+          background: "white",
         }}
-      />
+      >
+        <img
+          src={logoUrl}
+          alt="حرف چی"
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+          }}
+        />
+      </div>
     ),
     size,
   );

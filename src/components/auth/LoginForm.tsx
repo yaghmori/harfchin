@@ -3,16 +3,10 @@
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import { Apple, Lock, LogIn, Mail } from "lucide-react";
-import Image from "next/image";
+import { Lock, LogIn, Mail } from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
-import { toast } from "sonner";
-
-const GOOGLE_ICON =
-  "https://lh3.googleusercontent.com/aida-public/AB6AXuAukGmyZ5uZ5aU3pyMOe4uoP4nlpAHO5IFF8bw_QBGiiUg7LmCkY8DnRRPX0knwMdDl7xtguK-_5Q576RTRpyz0luWiccy5KMIT3bcK-a8avnTf3REf9Rd7Nu4m6AqSn3KnZZQAOsDYvfTF2kk4GhSCSOXguqulZBAJevn3Jtk4zq1zEy2sEL1AY858bfmXoSy2Ez0kYGY1-dohqtLb7Yk0nYkO55CAqPq-Xu1t8se4uOuChSqDydAHiVR7jpYf5XUzcOP9A522LG8";
 
 type LoginFormProps = {
   className?: string;
@@ -35,10 +29,6 @@ export function LoginForm({
     onSubmit?.({ identifier, password });
   }
 
-  function oauthSoon() {
-    toast.info("ورود با گوگل و اپل به‌زودی فعال می‌شود.");
-  }
-
   return (
     <form
       onSubmit={handleSubmit}
@@ -50,7 +40,7 @@ export function LoginForm({
           htmlFor="login-identifier"
           className="text-xs uppercase tracking-widest"
         >
-          ایمیل
+          نام کاربری یا ایمیل
         </Label>
         <div className="relative">
           <Mail
@@ -60,14 +50,14 @@ export function LoginForm({
           <Input
             id="login-identifier"
             name="identifier"
-            type="email"
-            autoComplete="email"
+            type="text"
+            autoComplete="username"
             value={identifier}
             onChange={(e) => {
               setIdentifier(e.target.value);
               onFieldChange?.("identifier");
             }}
-            placeholder="مثلاً user@email.com"
+            placeholder="مثلاً arash.r یا user@email.com"
             className="ps-11"
             aria-invalid={Boolean(fieldErrors?.identifier)}
             aria-describedby={
@@ -142,44 +132,6 @@ export function LoginForm({
         <span>ورود به حساب کاربری</span>
         <LogIn className="size-5" aria-hidden />
       </Button>
-
-      <div className="flex items-center gap-3 py-2">
-        <Separator className="flex-1" />
-        <span className="shrink-0 text-xs font-semibold uppercase tracking-tighter text-muted-foreground">
-          یا با استفاده از
-        </span>
-        <Separator className="flex-1" />
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <Button
-          type="button"
-          variant="outline"
-          size="lg"
-          className="w-full"
-          onClick={oauthSoon}
-        >
-          <Image
-            src={GOOGLE_ICON}
-            alt=""
-            width={20}
-            height={20}
-            className="size-5"
-            unoptimized
-          />
-          گوگل
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="lg"
-          className="w-full"
-          onClick={oauthSoon}
-        >
-          <Apple className="size-5 text-foreground" aria-hidden />
-          اپل
-        </Button>
-      </div>
     </form>
   );
 }

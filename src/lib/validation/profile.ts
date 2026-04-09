@@ -13,3 +13,19 @@ export const updateProfileBodySchema = z.object({
 });
 
 export type UpdateProfileBody = z.infer<typeof updateProfileBodySchema>;
+
+export const changePasswordBodySchema = z
+  .object({
+    newPassword: z
+      .string()
+      .min(8, "رمز عبور جدید باید حداقل ۸ کاراکتر باشد."),
+    confirmNewPassword: z
+      .string()
+      .min(1, "تکرار رمز عبور جدید را وارد کنید."),
+  })
+  .refine((d) => d.newPassword === d.confirmNewPassword, {
+    message: "رمز جدید و تکرار آن یکسان نیستند.",
+    path: ["confirmNewPassword"],
+  });
+
+export type ChangePasswordBody = z.infer<typeof changePasswordBodySchema>;

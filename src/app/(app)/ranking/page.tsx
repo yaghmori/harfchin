@@ -15,7 +15,7 @@ export default function RankingPage() {
         <Trophy className="size-10 text-amber-500" aria-hidden />
       </div>
       <div className="space-y-2">
-        <h1 className="text-2xl font-black text-foreground">رده‌بندی هفته</h1>
+        <h1 className="sr-only">رده‌بندی</h1>
         <p className="max-w-sm text-sm font-medium text-muted-foreground">
           جدول کامل رقابت هفتگی به‌زودی در همین صفحه نمایش داده می‌شود. فعلاً
           از خانه و اتاق‌های فعال بازی کنید و امتیاز جمع کنید.

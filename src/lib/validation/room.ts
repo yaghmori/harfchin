@@ -5,6 +5,7 @@ import {
   MAX_ROOM_TITLE_LENGTH,
 } from "@/lib/constants";
 
+const uuidSchema = z.string().uuid();
 export const roomCodeSchema = z
   .string()
   .min(4)
@@ -23,7 +24,15 @@ export const createRoomBodySchema = z.object({
 
 export const joinRoomBodySchema = z.object({
   roomCode: roomCodeSchema,
-  displayName: z.string().min(1).max(MAX_DISPLAY_NAME_LENGTH),
+  /** Omit to use the signed-in user's profile name (must be non-empty). */
+  displayName: z
+    .string()
+    .max(MAX_DISPLAY_NAME_LENGTH)
+    .optional()
+    .transform((s) => {
+      const t = s?.trim();
+      return t && t.length > 0 ? t : undefined;
+    }),
 });
 
 export const readyBodySchema = z.object({
@@ -33,6 +42,22 @@ export const readyBodySchema = z.object({
 
 export const roomCodeBodySchema = z.object({
   roomCode: roomCodeSchema,
+});
+
+export const inviteFriendBodySchema = z.object({
+  roomCode: roomCodeSchema,
+  friendUserId: uuidSchema,
+});
+
+export const kickPlayerBodySchema = z.object({
+  roomCode: roomCodeSchema,
+  targetUserId: uuidSchema,
+});
+
+export const respondRoomInviteBodySchema = z.object({
+  inviteId: z.string().uuid(),
+  action: z.enum(["accept", "decline"]),
+  displayName: z.string().min(1).max(MAX_DISPLAY_NAME_LENGTH).optional(),
 });
 
 export const settingsBodySchema = z.object({

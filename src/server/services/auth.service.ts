@@ -6,6 +6,10 @@ function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
+function normalizeIdentifier(identifier: string): string {
+  return identifier.trim();
+}
+
 export async function registerUser(input: {
   email: string;
   password: string;
@@ -35,18 +39,25 @@ export async function registerUser(input: {
   });
 }
 
-export async function authenticateUser(email: string, password: string) {
-  const row = await prisma.user.findUnique({
-    where: { email: normalizeEmail(email) },
+export async function authenticateUser(identifier: string, password: string) {
+  const normalizedIdentifier = normalizeIdentifier(identifier);
+  const normalizedEmail = normalizeEmail(normalizedIdentifier);
+  const row = await prisma.user.findFirst({
+    where: {
+      OR: [
+        { email: normalizedEmail },
+        { name: { equals: normalizedIdentifier, mode: "insensitive" } },
+      ],
+    },
   });
   if (!row?.passwordHash) {
-    throw new AppError("FORBIDDEN", "ایمیل یا رمز عبور اشتباه است.", {
+    throw new AppError("FORBIDDEN", "نام کاربری/ایمیل یا رمز عبور اشتباه است.", {
       status: 401,
     });
   }
   const ok = await verifyPassword(password, row.passwordHash);
   if (!ok) {
-    throw new AppError("FORBIDDEN", "ایمیل یا رمز عبور اشتباه است.", {
+    throw new AppError("FORBIDDEN", "نام کاربری/ایمیل یا رمز عبور اشتباه است.", {
       status: 401,
     });
   }

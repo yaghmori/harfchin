@@ -1,70 +1,96 @@
 "use client";
 
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { apiGet, apiPost } from "@/features/api/client";
+import {
+  useFriendsForRoomQuery,
+  useRoomChatQuery,
+  useRoomStateQuery,
+} from "@/hooks/api-queries";
+import {
+  useGameStartMutation,
+  useRoomChatPostMutation,
+  useRoomDeleteMutation,
+  useRoomInviteMutation,
+  useRoomKickMutation,
+  useRoomLeaveMutation,
+  useRoomReadyMutation,
+  useRoomReplayMutation,
+} from "@/hooks/api-mutations";
 import { useRoomSse } from "@/features/realtime/useRoomSse";
+import { API_ENDPOINTS } from "@/features/api/endpoints";
+import { apiGet } from "@/features/api/client";
+import type { AuthMePayload } from "@/hooks/api-queries";
 import { faDigits } from "@/lib/format";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { LobbyChat } from "./LobbyChat";
 import { LobbyFinishedAlert } from "./LobbyFinishedAlert";
-import { LobbyHeader } from "./LobbyHeader";
+import { LobbyInviteFriendsSheet } from "./LobbyInviteFriendsSheet";
+import { LobbyInviteLoginCta } from "./LobbyInviteLoginCta";
 import { LobbyPlayersGrid } from "./LobbyPlayersGrid";
+import { LobbyShareQrDialog } from "./LobbyShareQrDialog";
 import { LobbyRoomSection } from "./LobbyRoomSection";
-import type { ChatMessage, RoomState } from "./types";
+import type { Player } from "./types";
 
 export function LobbyClient({ roomCode }: { roomCode: string }) {
   const router = useRouter();
-  const [state, setState] = useState<RoomState | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
   const [chatDraft, setChatDraft] = useState("");
-  const [chatBusy, setChatBusy] = useState(false);
-  const [copiedInvite, setCopiedInvite] = useState(false);
-  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
-  const [showQr, setShowQr] = useState(false);
+  const [showInviteSheet, setShowInviteSheet] = useState(false);
+  const [showInviteLoginCta, setShowInviteLoginCta] = useState(false);
+  const [showShareQr, setShowShareQr] = useState(false);
+  const [deleteRoomDialogOpen, setDeleteRoomDialogOpen] = useState(false);
+  const [leaveRoomDialogOpen, setLeaveRoomDialogOpen] = useState(false);
+  const [kickTarget, setKickTarget] = useState<Pick<
+    Player,
+    "userId" | "displayName"
+  > | null>(null);
   /** One automatic «آماده» per visit when the lobby is open (no manual ready button). */
   const autoReadyAttemptedRef = useRef(false);
 
-  const load = useCallback(async () => {
-    try {
-      const data = await apiGet<RoomState>(
-        `/api/room/state?code=${encodeURIComponent(roomCode)}`,
-      );
-      setState(data);
-      setError(null);
-      if (data.status === "playing" && data.activeGameId) {
-        router.push(`/game/${data.roomCode}`);
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "خطا");
-    }
-  }, [roomCode, router]);
-
-  const loadChat = useCallback(async () => {
-    try {
-      const data = await apiGet<{ messages: ChatMessage[] }>(
-        `/api/room/chat?code=${encodeURIComponent(roomCode)}`,
-      );
-      setMessages(data.messages);
-    } catch {
-      /* non-members or transient errors — avoid breaking lobby */
-    }
-  }, [roomCode]);
-
-  const refresh = useCallback(() => {
-    void load();
-    void loadChat();
-  }, [load, loadChat]);
+  const roomQuery = useRoomStateQuery(roomCode);
+  const chatQuery = useRoomChatQuery(roomCode);
+  const friendsQuery = useFriendsForRoomQuery(roomCode);
+  const readyMutation = useRoomReadyMutation();
+  const startMutation = useGameStartMutation();
+  const replayMutation = useRoomReplayMutation();
+  const deleteRoomMutation = useRoomDeleteMutation();
+  const leaveRoomMutation = useRoomLeaveMutation();
+  const kickMutation = useRoomKickMutation();
+  const chatMutation = useRoomChatPostMutation();
+  const inviteMutation = useRoomInviteMutation();
+  const state = roomQuery.data ?? null;
+  const messages = chatQuery.data?.messages ?? [];
+  const queryError =
+    roomQuery.error instanceof Error ? roomQuery.error.message : null;
+  const error = localError ?? queryError;
+  const busy =
+    readyMutation.isPending ||
+    startMutation.isPending ||
+    replayMutation.isPending ||
+    deleteRoomMutation.isPending ||
+    leaveRoomMutation.isPending ||
+    kickMutation.isPending;
+  const chatBusy = chatMutation.isPending;
+  const inviteBusy = inviteMutation.isPending;
 
   useEffect(() => {
-    void load();
-    void loadChat();
-  }, [load, loadChat]);
+    if (state?.status === "playing" && state.activeGameId) {
+      router.push(`/game/${state.roomCode}`);
+    }
+  }, [state, router]);
 
   const me = state?.players.find((p) => p.userId === state.meUserId);
 
@@ -78,65 +104,56 @@ export function LobbyClient({ roomCode }: { roomCode: string }) {
     autoReadyAttemptedRef.current = true;
     void (async () => {
       try {
-        await apiPost("/api/room/ready", {
+        await readyMutation.mutateAsync({
           roomCode: state.roomCode,
           isReady: true,
         });
-        await load();
+        await roomQuery.refetch();
+        setLocalError(null);
       } catch (e) {
         autoReadyAttemptedRef.current = false;
-        setError(e instanceof Error ? e.message : "خطا");
+        setLocalError(e instanceof Error ? e.message : "خطا");
       }
     })();
-  }, [state, me, load]);
+  }, [state, me, readyMutation, roomQuery]);
 
-  useRoomSse(roomCode, refresh);
+  useRoomSse(roomCode, () => {
+    void roomQuery.refetch();
+    void chatQuery.refetch();
+    void friendsQuery.refetch();
+  });
 
   const isHost = state?.hostId === state?.meUserId;
+  const hostPresentInLobby = state?.hostPresentInLobby ?? false;
   const hostPlayer =
-    state?.players.find((p) => p.isHost) ?? state?.players[0];
+    hostPresentInLobby && state
+      ? state.players.find((p) => p.userId === state.hostId)
+      : undefined;
   const otherPlayers =
-    state?.players.filter((p) => p.id !== hostPlayer?.id) ?? [];
+    state?.players.filter((p) => p.userId !== state.hostId) ?? [];
   const emptySlots = state
     ? Math.max(0, state.maxPlayers - state.players.length)
     : 0;
 
   async function startGame() {
     if (!state) return;
-    setBusy(true);
     try {
-      await apiPost("/api/game/start", { roomCode: state.roomCode });
+      await startMutation.mutateAsync({ roomCode: state.roomCode });
+      setLocalError(null);
       router.push(`/game/${state.roomCode}`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "خطا");
-    } finally {
-      setBusy(false);
+      setLocalError(e instanceof Error ? e.message : "خطا");
     }
   }
 
   async function replayLobby() {
     if (!state) return;
-    setBusy(true);
     try {
-      await apiPost("/api/room/replay", { roomCode: state.roomCode });
-      await load();
+      await replayMutation.mutateAsync({ roomCode: state.roomCode });
+      await roomQuery.refetch();
+      setLocalError(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "خطا");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function leave() {
-    if (!state) return;
-    setBusy(true);
-    try {
-      await apiPost("/api/room/leave", { roomCode: state.roomCode });
-      router.push("/");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "خطا");
-    } finally {
-      setBusy(false);
+      setLocalError(e instanceof Error ? e.message : "خطا");
     }
   }
 
@@ -145,78 +162,99 @@ export function LobbyClient({ roomCode }: { roomCode: string }) {
     if (!state) return;
     const body = chatDraft.trim();
     if (!body || chatBusy) return;
-    setChatBusy(true);
     try {
-      await apiPost("/api/room/chat", {
+      await chatMutation.mutateAsync({
         roomCode: state.roomCode,
         body,
       });
       setChatDraft("");
-      await loadChat();
+      await chatQuery.refetch();
+      setLocalError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "خطا");
-    } finally {
-      setChatBusy(false);
+      setLocalError(err instanceof Error ? err.message : "خطا");
     }
   }
 
-  async function copyInviteLink() {
-    if (!state || typeof navigator.clipboard?.writeText !== "function") return;
-    const origin =
-      typeof window !== "undefined" ? window.location.origin : "";
-    const url = `${origin}/join?code=${encodeURIComponent(state.roomCode)}`;
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopiedInvite(true);
-      setTimeout(() => setCopiedInvite(false), 2000);
-    } catch {
-      setError("کپی لینک ناموفق بود.");
-    }
-  }
-
-  async function openQr() {
+  async function inviteFriend(friendUserId: string) {
     if (!state) return;
     try {
-      if (!qrDataUrl) {
-        const origin = typeof window !== "undefined" ? window.location.origin : "";
-        const url = `${origin}/join?code=${encodeURIComponent(state.roomCode)}`;
-        const { default: QRCode } = await import("qrcode");
-        const dataUrl = await QRCode.toDataURL(url, {
-          margin: 2,
-          width: 240,
-          color: { dark: "#191c1dff", light: "#ffffffff" },
-        });
-        setQrDataUrl(dataUrl);
-      }
-      setShowQr(true);
-    } catch {
-      setError("ساخت QR ناموفق بود.");
+      await inviteMutation.mutateAsync({ roomCode: state.roomCode, friendUserId });
+      setLocalError(null);
+      await friendsQuery.refetch();
+    } catch (e) {
+      setLocalError(e instanceof Error ? e.message : "خطا");
     }
   }
 
-  async function shareInvite() {
-    if (!state) return;
-    const origin = typeof window !== "undefined" ? window.location.origin : "";
-    const url = `${origin}/join?code=${encodeURIComponent(state.roomCode)}`;
+  async function openInviteFromEmptySlot() {
     try {
-      if (typeof navigator.share === "function") {
-        await navigator.share({
-          title: `دعوت به اتاق ${state.title || state.roomCode}`,
-          text: "برای پیوستن به بازی، این لینک را باز کنید",
-          url,
-        });
+      const { user } = await apiGet<AuthMePayload>(API_ENDPOINTS.auth.me);
+      if (user?.isRegistered) {
+        setShowInviteSheet(true);
       } else {
-        await copyInviteLink();
+        setShowInviteLoginCta(true);
       }
     } catch {
-      /* user cancelled share sheet */
+      setShowInviteLoginCta(true);
+    }
+  }
+
+  function requestDeleteRoom() {
+    if (!state) return;
+    setDeleteRoomDialogOpen(true);
+  }
+
+  async function confirmDeleteRoom() {
+    if (!state) return;
+    try {
+      await deleteRoomMutation.mutateAsync({ roomCode: state.roomCode });
+      setLocalError(null);
+      setDeleteRoomDialogOpen(false);
+      router.push("/");
+    } catch (e) {
+      setLocalError(e instanceof Error ? e.message : "خطا");
+    }
+  }
+
+  function requestLeaveLobby() {
+    setLeaveRoomDialogOpen(true);
+  }
+
+  async function confirmLeaveLobby() {
+    if (!state) return;
+    try {
+      await leaveRoomMutation.mutateAsync({ roomCode: state.roomCode });
+      setLocalError(null);
+      setLeaveRoomDialogOpen(false);
+      router.push("/");
+    } catch (e) {
+      setLocalError(e instanceof Error ? e.message : "خطا");
+    } finally {
+      leaveRoomMutation.reset();
+    }
+  }
+
+  async function confirmKickPlayer() {
+    if (!state || !kickTarget) return;
+    try {
+      await kickMutation.mutateAsync({
+        roomCode: state.roomCode,
+        targetUserId: kickTarget.userId,
+      });
+      setLocalError(null);
+      setKickTarget(null);
+      await roomQuery.refetch();
+    } catch (e) {
+      setLocalError(e instanceof Error ? e.message : "خطا");
+    } finally {
+      kickMutation.reset();
     }
   }
 
   if (error && !state) {
     return (
       <div
-        className="relative min-h-dvh bg-ka-background px-4 py-8 text-ka-on-background"
+        className="relative min-h-dvh bg-background px-4 py-8 text-foreground"
         dir="rtl"
       >
         <Alert variant="destructive">
@@ -237,7 +275,7 @@ export function LobbyClient({ roomCode }: { roomCode: string }) {
   if (!state) {
     return (
       <div
-        className="relative flex min-h-dvh items-center justify-center bg-ka-background text-ka-on-surface-variant"
+        className="relative flex min-h-dvh items-center justify-center bg-background text-muted-foreground"
         dir="rtl"
       >
         <p className="text-sm font-semibold">در حال بارگذاری لابی…</p>
@@ -249,54 +287,74 @@ export function LobbyClient({ roomCode }: { roomCode: string }) {
     state.players.length > 0 && state.players.every((p) => p.isReady);
   const canStart =
     isHost &&
+    state.hostPresentInLobby &&
     state.players.length >= state.minPlayersToStart &&
     allReady &&
     state.status === "waiting";
 
-  const displayTitle =
-    state.title.trim().length > 0 ? state.title.trim() : "حرفچین";
-
   return (
     <div
-      className="relative min-h-dvh bg-ka-background text-ka-on-background selection:bg-ka-primary-fixed selection:text-ka-on-primary-fixed"
+      className="relative min-h-dvh bg-background text-foreground selection:bg-primary/20 selection:text-primary"
       dir="rtl"
     >
       <div
-        className="pointer-events-none fixed top-[20%] -left-20 -z-10 size-64 rounded-full bg-ka-primary/5 blur-[80px]"
+        className="pointer-events-none fixed top-[20%] -left-20 -z-10 size-64 rounded-full bg-primary/5 blur-[80px]"
         aria-hidden
       />
       <div
-        className="pointer-events-none fixed bottom-[10%] -right-20 -z-10 size-96 rounded-full bg-ka-secondary/5 blur-[100px]"
+        className="pointer-events-none fixed bottom-[10%] -right-20 -z-10 size-96 rounded-full bg-secondary/30 blur-[100px]"
         aria-hidden
       />
 
-      <LobbyHeader
-        displayTitle={displayTitle}
-        meDisplayName={me?.displayName ?? null}
-        busy={busy}
-        onLeave={leave}
-      />
-
-      <main className="mx-auto max-w-5xl px-0 pb-8 pt-2 md:px-2 md:pb-10">
+      <main className="mx-auto max-w-5xl px-0 pb-8 pt-4 md:px-2 md:pb-10">
         {error ? (
           <Alert variant="destructive" className="mb-4">
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         ) : null}
 
+        {state.status === "waiting" && !state.hostPresentInLobby ? (
+          <Alert className="mb-4 border-amber-500/35 bg-amber-500/10 text-foreground dark:border-amber-500/25 dark:bg-amber-950/40">
+            <AlertDescription className="text-sm font-medium leading-relaxed">
+              میزبان در لابی حضور ندارد. کارت میزبان نمایش داده نمی‌شود و بازی
+              فقط پس از بازگشت میزبان به لابی و آماده بودن همه بازیکنان قابل
+              شروع است.
+            </AlertDescription>
+          </Alert>
+        ) : null}
+
         <LobbyRoomSection
           state={state}
           isHost={!!isHost}
+          canInvite={!!state.canInvite}
           canStart={canStart}
           busy={busy}
-          copiedInvite={copiedInvite}
-          qrDataUrl={qrDataUrl}
-          showQr={showQr}
-          onOpenQr={openQr}
-          onCloseQr={() => setShowQr(false)}
-          onShareInvite={shareInvite}
-          onCopyInviteLink={copyInviteLink}
+          onOpenShareDialog={() => setShowShareQr(true)}
+          onDeleteRoom={requestDeleteRoom}
           onStartGame={startGame}
+          onLeaveRoom={isHost ? undefined : requestLeaveLobby}
+        />
+
+        <LobbyShareQrDialog
+          open={showShareQr}
+          onOpenChange={setShowShareQr}
+          roomCode={state.roomCode}
+        />
+
+        <LobbyInviteFriendsSheet
+          open={showInviteSheet}
+          onOpenChange={setShowInviteSheet}
+          roomIsPrivate={state.isPrivate}
+          canInvite={!!friendsQuery.data?.canInvite}
+          items={friendsQuery.data?.items ?? []}
+          inviteBusy={inviteBusy}
+          onInvite={inviteFriend}
+        />
+
+        <LobbyInviteLoginCta
+          open={showInviteLoginCta}
+          onOpenChange={setShowInviteLoginCta}
+          roomCode={state.roomCode}
         />
 
         <LobbyFinishedAlert
@@ -311,16 +369,30 @@ export function LobbyClient({ roomCode }: { roomCode: string }) {
           hostPlayer={hostPlayer}
           otherPlayers={otherPlayers}
           emptySlots={emptySlots}
-          onCopyInviteLink={copyInviteLink}
+          onEmptySlotInvite={() => void openInviteFromEmptySlot()}
+          onRequestKick={
+            isHost && state.status === "waiting"
+              ? (p) => setKickTarget(p)
+              : undefined
+          }
         />
 
-        <p className="mb-8 rounded-2xl bg-ka-surface-container-low px-3 py-2 text-center text-xs font-medium text-ka-on-surface-variant">
-          با باز بودن این صفحه وضعیت شما «آماده» ثبت می‌شود. میزبان وقتی حداقل{" "}
-          {faDigits(state.minPlayersToStart)} نفر در اتاق باشند و همه آماده باشند
-          می‌تواند بازی را شروع کند.
+        <p className="mb-8 rounded-2xl bg-secondary px-3 py-2 text-center text-xs font-medium text-muted-foreground">
+          {state.status === "waiting" && !state.hostPresentInLobby ? (
+            <>
+              تا بازگشت میزبان به لابی، بازی شروع نمی‌شود. با باز بودن این صفحه
+              وضعیت شما «آماده» ثبت می‌شود.
+            </>
+          ) : (
+            <>
+              با باز بودن این صفحه وضعیت شما «آماده» ثبت می‌شود. میزبان وقتی
+              حداقل {faDigits(state.minPlayersToStart)} نفر در اتاق باشند و همه
+              آماده باشند می‌تواند بازی را شروع کند.
+            </>
+          )}
         </p>
 
-        <Separator className="mb-8 bg-ka-outline-variant/40" />
+        <Separator className="mb-8 bg-border/60" />
 
         <LobbyChat
           messages={messages}
@@ -332,6 +404,94 @@ export function LobbyClient({ roomCode }: { roomCode: string }) {
           chatDisabled={state.status === "finished"}
         />
       </main>
+
+      <AlertDialog
+        open={deleteRoomDialogOpen}
+        onOpenChange={setDeleteRoomDialogOpen}
+      >
+        <AlertDialogContent dir="rtl" className="text-right">
+          <AlertDialogHeader>
+            <AlertDialogTitle>حذف اتاق؟</AlertDialogTitle>
+            <AlertDialogDescription>
+              اتاق برای همه بازیکنان حذف می‌شود و این عمل برگشت‌پذیر نیست.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="sm:flex-row-reverse">
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={busy}
+              className="min-h-11 w-full sm:w-auto"
+              onClick={() => void confirmDeleteRoom()}
+            >
+              حذف اتاق
+            </Button>
+            <AlertDialogCancel className="border-border">
+              انصراف
+            </AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={kickTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setKickTarget(null);
+        }}
+      >
+        <AlertDialogContent dir="rtl" className="text-right">
+          <AlertDialogHeader>
+            <AlertDialogTitle>حذف بازیکن از اتاق؟</AlertDialogTitle>
+            <AlertDialogDescription>
+              {kickTarget
+                ? `«${kickTarget.displayName}» از این اتاق خارج می‌شود و می‌تواند بعداً دوباره بپیوندد.`
+                : null}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="sm:flex-row-reverse">
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={busy}
+              className="min-h-11 w-full sm:w-auto"
+              onClick={() => void confirmKickPlayer()}
+            >
+              حذف از اتاق
+            </Button>
+            <AlertDialogCancel className="border-border">
+              انصراف
+            </AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={leaveRoomDialogOpen}
+        onOpenChange={setLeaveRoomDialogOpen}
+      >
+        <AlertDialogContent dir="rtl" className="text-right">
+          <AlertDialogHeader>
+            <AlertDialogTitle>خروج از اتاق؟</AlertDialogTitle>
+            <AlertDialogDescription>
+              از این اتاق خارج می‌شوید و می‌توانید بعداً دوباره بپیوندید.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="sm:flex-row-reverse">
+            <Button
+              type="button"
+              variant="default"
+              disabled={busy}
+              className="min-h-11 w-full sm:w-auto"
+              onClick={() => void confirmLeaveLobby()}
+            >
+              خروج
+            </Button>
+            <AlertDialogCancel className="border-border">
+              ماندن
+            </AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

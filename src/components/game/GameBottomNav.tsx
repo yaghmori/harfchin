@@ -12,8 +12,8 @@ const itemClass = (active: boolean) =>
   cn(
     "flex flex-col items-center justify-center rounded-full px-5 py-2 transition-colors duration-300 ease-out",
     active
-      ? "scale-105 bg-violet-100 text-ka-primary dark:bg-violet-900/30 dark:text-violet-200"
-      : "text-zinc-400 hover:text-ka-primary dark:text-zinc-500 dark:hover:text-violet-300",
+      ? "scale-105 bg-violet-100 text-primary dark:bg-violet-900/30 dark:text-violet-200"
+      : "text-zinc-400 hover:text-primary dark:text-zinc-500 dark:hover:text-violet-300",
   );
 
 export function GameBottomNav({ active }: GameBottomNavProps) {

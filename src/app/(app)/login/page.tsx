@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
@@ -12,27 +13,33 @@ export const metadata: Metadata = {
 
 export default async function LoginPage() {
   const user = await getSessionUser();
-  if (user && !user.isGuest && user.email && user.passwordHash) {
+  if (user && !user.isGuest && user.passwordHash) {
     redirect("/profile");
   }
 
   return (
-    <div className="ka-auth-page flex flex-1 flex-col items-center justify-center bg-ka-surface py-6 text-ka-on-surface selection:bg-ka-primary-fixed selection:text-ka-on-primary-fixed">
+    <div className="auth-page flex flex-1 flex-col items-center justify-center bg-background py-6 text-foreground selection:bg-primary/20 selection:text-primary">
       <main className="flex w-full max-w-md flex-col items-center px-8 py-4">
         <div className="mb-12 flex flex-col items-center">
-          <div className="relative mb-6 flex h-32 w-32 items-center justify-center rounded-full bg-ka-surface-container-lowest shadow-[0_12px_32px_rgba(25,28,29,0.06)]">
+          <h1 className="sr-only">ورود</h1>
+          <div className="relative mb-6 flex w-full max-w-[280px] items-center justify-center">
             <div
-              className="absolute inset-0 rounded-full bg-ka-secondary/30 blur-2xl opacity-20"
+              className="absolute inset-x-4 -inset-y-6 rounded-3xl bg-secondary/40 blur-2xl opacity-30"
               aria-hidden
             />
-            <span className="relative text-5xl font-black text-ka-primary">
-              آ
-            </span>
+            <Image
+              src="/logo-type.png"
+              alt="حرفچین"
+              width={560}
+              height={160}
+              className="relative h-14 w-auto max-w-full object-contain drop-shadow-[0_8px_24px_rgba(25,28,29,0.08)]"
+              priority
+            />
           </div>
-          <h1 className="mb-2 text-3xl font-extrabold tracking-tight text-ka-on-surface">
+          <p className="mb-2 text-3xl font-extrabold tracking-tight text-foreground">
             خوش آمدید
-          </h1>
-          <p className="text-center font-medium text-ka-on-surface-variant">
+          </p>
+          <p className="text-center font-medium text-muted-foreground">
             برای ورود به دنیای بازی حرفچی مشخصات خود را وارد کنید
           </p>
         </div>
@@ -40,7 +47,7 @@ export default async function LoginPage() {
         <Suspense
           fallback={
             <div
-              className="h-48 w-full animate-pulse rounded-2xl bg-ka-surface-container-high/60"
+              className="h-48 w-full animate-pulse rounded-2xl bg-muted/70"
               aria-busy
               aria-label="بارگذاری فرم ورود"
             />
@@ -51,11 +58,11 @@ export default async function LoginPage() {
       </main>
 
       <footer className="px-8 pb-6 text-center">
-        <p className="text-sm font-medium text-ka-on-surface-variant">
+        <p className="text-sm font-medium text-muted-foreground">
           حساب کاربری ندارید؟{" "}
           <Link
             href="/signup"
-            className="font-bold text-ka-primary hover:underline"
+            className="font-bold text-primary hover:underline"
           >
             ثبت‌نام کنید
           </Link>

@@ -1,7 +1,7 @@
 "use client";
 
 import { LoginForm } from "@/components/auth/LoginForm";
-import { apiPost } from "@/features/api/client";
+import { useLoginMutation } from "@/hooks/api-mutations";
 import { fieldErrorsFromZodIssues } from "@/lib/zod-field-errors";
 import { loginBodySchema } from "@/lib/validation/auth";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -15,7 +15,7 @@ export function AuthLoginClient() {
   const [fieldErrors, setFieldErrors] = React.useState<
     Partial<Record<"identifier" | "password", string>>
   >({});
-  const [pending, setPending] = React.useState(false);
+  const loginMutation = useLoginMutation();
 
   function clearField(field: "identifier" | "password") {
     setFieldErrors((prev) => {
@@ -27,14 +27,11 @@ export function AuthLoginClient() {
 
   async function onSubmit(data: { identifier: string; password: string }) {
     setFieldErrors({});
-    const parsed = loginBodySchema.safeParse({
-      email: data.identifier.trim(),
-      password: data.password,
-    });
+    const parsed = loginBodySchema.safeParse(data);
     if (!parsed.success) {
       setFieldErrors(
         fieldErrorsFromZodIssues(parsed.error.issues, {
-          email: "identifier",
+          identifier: "identifier",
         }),
       );
       const first = parsed.error.issues[0]?.message;
@@ -42,9 +39,8 @@ export function AuthLoginClient() {
       return;
     }
 
-    setPending(true);
     try {
-      await apiPost("/api/auth/login", parsed.data);
+      await loginMutation.mutateAsync(parsed.data);
       toast.success("خوش آمدید!");
       const target =
         from && from.startsWith("/") && !from.startsWith("//")
@@ -57,7 +53,7 @@ export function AuthLoginClient() {
         e instanceof Error ? e.message : "ورود ناموفق بود.";
       toast.error(msg);
     } finally {
-      setPending(false);
+      loginMutation.reset();
     }
   }
 
@@ -66,7 +62,9 @@ export function AuthLoginClient() {
       fieldErrors={fieldErrors}
       onFieldChange={clearField}
       onSubmit={onSubmit}
-      className={pending ? "pointer-events-none opacity-70" : undefined}
+      className={
+        loginMutation.isPending ? "pointer-events-none opacity-70" : undefined
+      }
     />
   );
 }

@@ -12,15 +12,20 @@ const vazirmatn = Vazirmatn({
 
 export const metadata: Metadata = {
   title: {
-    default: "حرفچی",
-    template: "%s · حرفچی",
+    default: "حرف چی",
+    template: "%s · حرف چی",
   },
   description: "بازی چندنفره اسم و فامیل با حروف فارسی",
-  applicationName: "حرفچی",
+  applicationName: "حرف چی",
   appleWebApp: {
     capable: true,
-    title: "حرفچی",
+    title: "حرف چی",
     statusBarStyle: "default",
+  },
+  icons: {
+    icon: [{ url: "/logo.png", type: "image/png" }],
+    shortcut: ["/logo.png"],
+    apple: [{ url: "/logo.png", type: "image/png" }],
   },
   formatDetection: {
     telephone: false,
@@ -46,7 +51,10 @@ export default function RootLayout({
       className={cn("h-full light", vazirmatn.variable)}
       suppressHydrationWarning
     >
-      <body className="min-h-full bg-background font-sans text-foreground antialiased">
+      <body
+        className="min-h-full bg-background font-sans text-foreground antialiased"
+        suppressHydrationWarning
+      >
         <AppProviders>{children}</AppProviders>
       </body>
     </html>

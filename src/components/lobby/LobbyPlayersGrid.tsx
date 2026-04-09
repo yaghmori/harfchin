@@ -1,6 +1,9 @@
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { UserMinus } from "lucide-react";
+import type { KeyboardEvent } from "react";
 import { PlayerAvatar } from "./PlayerAvatar";
 import type { Player, RoomState } from "./types";
 
@@ -9,7 +12,10 @@ type LobbyPlayersGridProps = {
   hostPlayer: Player | undefined;
   otherPlayers: Player[];
   emptySlots: number;
-  onCopyInviteLink: () => void;
+  /** Only empty capacity slots trigger this (not filled player cards). */
+  onEmptySlotInvite: () => void;
+  /** When set (host + waiting), each non-host player card shows remove → opens confirm in parent. */
+  onRequestKick?: (player: Pick<Player, "userId" | "displayName">) => void;
 };
 
 export function LobbyPlayersGrid({
@@ -17,12 +23,23 @@ export function LobbyPlayersGrid({
   hostPlayer,
   otherPlayers,
   emptySlots,
-  onCopyInviteLink,
+  onEmptySlotInvite,
+  onRequestKick,
 }: LobbyPlayersGridProps) {
+  const inviteInteractive = state.status !== "finished" && emptySlots > 0;
+  const showKick = Boolean(onRequestKick);
+
+  function emptySlotKeyDown(e: KeyboardEvent<HTMLButtonElement>) {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onEmptySlotInvite();
+    }
+  }
+
   return (
     <section className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
       {hostPlayer ? (
-        <Card className="col-span-2 flex flex-row items-center justify-between border-ka-primary/15 py-5 shadow-[0_12px_32px_rgba(25,28,29,0.06)]">
+        <Card className="col-span-2 flex flex-row items-center justify-between border-primary/15 py-5 shadow-[0_12px_32px_rgba(25,28,29,0.06)]">
           <CardContent className="flex flex-1 items-center gap-5 p-0 px-5">
             <div className="relative shrink-0">
               <PlayerAvatar
@@ -30,8 +47,8 @@ export function LobbyPlayersGrid({
                 size="lg"
                 dimmed={!hostPlayer.isReady}
               />
-              <div className="absolute -top-1 -right-1 flex size-6 items-center justify-center rounded-full border-2 border-white bg-ka-secondary-container">
-                <span className="text-[10px] font-black text-ka-on-secondary-container">
+              <div className="absolute -top-1 -right-1 flex size-6 items-center justify-center rounded-full border-2 border-white bg-secondary">
+                <span className="text-[10px] font-black text-secondary-foreground">
                   ★
                 </span>
               </div>
@@ -41,7 +58,7 @@ export function LobbyPlayersGrid({
                 {hostPlayer.displayName}
                 {hostPlayer.userId === state.meUserId ? " (شما)" : ""}
               </h3>
-              <p className="text-xs font-bold text-ka-primary">میزبان اتاق</p>
+              <p className="text-xs font-bold text-primary">میزبان اتاق</p>
             </div>
           </CardContent>
           <div className="px-4">
@@ -49,7 +66,7 @@ export function LobbyPlayersGrid({
               className={cn(
                 "rounded-full px-3 py-1 text-[10px] font-black",
                 hostPlayer.isReady
-                  ? "border-0 bg-ka-primary-fixed text-ka-on-primary-fixed-variant"
+                  ? "border-0 bg-primary/15 text-primary"
                   : "bg-muted text-muted-foreground",
               )}
             >
@@ -62,15 +79,24 @@ export function LobbyPlayersGrid({
       {otherPlayers.map((p) => (
         <Card
           key={p.id}
-          className="border-transparent py-5 text-center shadow-[0_12px_32px_rgba(25,28,29,0.04)] transition-colors hover:border-ka-primary/20"
+          className="relative border-transparent py-5 text-center shadow-[0_12px_32px_rgba(25,28,29,0.04)] transition-colors hover:border-primary/20"
         >
+          {showKick ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className="absolute top-2 end-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
+              aria-label={`حذف ${p.displayName} از اتاق`}
+              onClick={() => onRequestKick?.(p)}
+            >
+              <UserMinus className="size-4" aria-hidden />
+            </Button>
+          ) : null}
           <CardContent className="flex flex-col items-center gap-3 p-0 px-3">
             <PlayerAvatar name={p.displayName} dimmed={!p.isReady} />
             <span
-              className={cn(
-                "text-sm font-bold",
-                !p.isReady && "opacity-50",
-              )}
+              className={cn("text-sm font-bold", !p.isReady && "opacity-50")}
             >
               {p.displayName}
               {p.userId === state.meUserId ? " (شما)" : ""}
@@ -89,17 +115,36 @@ export function LobbyPlayersGrid({
         </Card>
       ))}
 
-      {Array.from({ length: emptySlots }).map((_, i) => (
-        <button
-          key={`empty-${i}`}
-          type="button"
-          className="flex min-h-[140px] flex-col items-center justify-center gap-1 rounded-2xl border-2 border-dashed border-ka-outline-variant/40 bg-transparent p-5 text-ka-outline transition-colors hover:border-ka-primary/40"
-          onClick={() => void onCopyInviteLink()}
-        >
-          <span className="text-2xl text-ka-outline-variant">+</span>
-          <span className="text-[10px] font-bold">ظرفیت خالی</span>
-        </button>
-      ))}
+      {Array.from({ length: emptySlots }).map((_, i) =>
+        inviteInteractive ? (
+          <button
+            key={`empty-${i}`}
+            type="button"
+            onClick={() => onEmptySlotInvite()}
+            onKeyDown={emptySlotKeyDown}
+            aria-label="دعوت دوستان برای پر کردن این جای خالی"
+            className={cn(
+              "flex min-h-[140px] flex-col items-center justify-center gap-1 rounded-2xl border-2 border-dashed bg-muted border-border  p-5 text-muted-foreground",
+              "cursor-pointer transition-colors hover:border-primary/50 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+            )}
+          >
+            <span className="text-4xl text-muted-foreground/50">+</span>
+            <span className="text-xs  text-muted-foreground/50 font-bold">
+              ظرفیت خالی
+            </span>
+          </button>
+        ) : (
+          <div
+            key={`empty-${i}`}
+            className="flex min-h-[140px] flex-col items-center justify-center gap-1 rounded-2xl border-2 border-dashed border-border bg-muted p-5 text-muted-foreground"
+          >
+            <span className="text-xl text-muted-foreground/50">+</span>
+            <span className="text-xs text-muted-foreground/50 font-bold">
+              ظرفیت خالی
+            </span>
+          </div>
+        ),
+      )}
     </section>
   );
 }

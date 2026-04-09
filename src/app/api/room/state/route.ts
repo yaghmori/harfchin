@@ -7,10 +7,8 @@ export async function GET(req: Request) {
   try {
     const code = new URL(req.url).searchParams.get("code");
     const roomCode = roomCodeSchema.parse(code ?? "");
-    const [data, meUserId] = await Promise.all([
-      roomService.getRoomState(roomCode),
-      getOrCreateSessionUserId(),
-    ]);
+    const meUserId = await getOrCreateSessionUserId();
+    const data = await roomService.getRoomState(roomCode, meUserId);
     return jsonOk({ ...data, meUserId });
   } catch (e) {
     return handleRouteError(e);

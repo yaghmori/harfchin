@@ -33,7 +33,10 @@ export async function updateRoom(
 }
 
 export async function deleteRoom(roomId: string) {
-  return prisma.room.delete({ where: { id: roomId } });
+  return prisma.$transaction(async (tx) => {
+    await tx.game.deleteMany({ where: { roomId } });
+    return tx.room.delete({ where: { id: roomId } });
+  });
 }
 
 /** Active public rooms for the directory (joinable discovery). */

@@ -1,15 +1,30 @@
 "use client";
 
-import { validateAnswerForLetter } from "@/domain/rules/answer-validation";
-import { CategoryPlayerTabs } from "@/components/game/CategoryPlayerTabs";
-import { GameBottomNav } from "@/components/game/GameBottomNav";
+import { RoundResultsTable } from "@/components/game/RoundResultsTable";
+import { pickAnswerForCategory } from "@/components/game/round-answer-utils";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { apiGet, apiPost } from "@/features/api/client";
-import { POLL_INTERVAL_MS } from "@/lib/constants";
+import { validateAnswerForLetter } from "@/domain/rules/answer-validation";
+import {
+  useCompleteRoundMutation,
+  useEndGameMutation,
+  useNextRoundMutation,
+} from "@/hooks/api-mutations";
+import { useGameStateByRoomQuery } from "@/hooks/api-queries";
+import { useSyncErrorToToast } from "@/hooks/use-sync-error-toast";
 import { faDigits } from "@/lib/format";
+import type { LucideIcon } from "lucide-react";
 import {
   Apple,
   Briefcase,
@@ -30,55 +45,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useLayoutEffect, useState } from "react";
-import { useSyncErrorToToast } from "@/hooks/use-sync-error-toast";
-import type { LucideIcon } from "lucide-react";
-
-type AnswerRow = {
-  categoryKey: string;
-  value: string;
-  normalizedValue: string;
-  isValid: boolean;
-  score: number;
-};
-
-type PlayerRow = {
-  id: string;
-  displayName: string;
-  isHost: boolean;
-  answers: AnswerRow[];
-};
-
-type GamePayload = {
-  meUserId: string;
-  meRoomPlayerId: string | null;
-  hostUserId: string;
-  phase: "none" | "playing" | "processing_round" | "round_results" | "finished";
-  roomStatus: string;
-  game: {
-    id: string;
-    status: string;
-    currentRound: number;
-    totalRounds: number;
-    roundTimeSec: number;
-  } | null;
-  round: {
-    id: string;
-    roundNumber: number;
-    letter: string;
-    status: string;
-    startedAt: string;
-    endedAt: string | null;
-    endsAt: string;
-  } | null;
-  players: PlayerRow[];
-  leaderboard: {
-    roomPlayerId: string;
-    displayName: string;
-    totalScore: number;
-  }[];
-  categories: { key: string; title: string }[];
-};
+import { useEffect, useState } from "react";
 
 function categoryIcon(key: string): LucideIcon {
   const map: Record<string, LucideIcon> = {
@@ -99,18 +66,7 @@ function categoryIcon(key: string): LucideIcon {
   return map[key] ?? PenLine;
 }
 
-function categoryPlaceholder(key: string, letter: string): string {
-  const map: Record<string, string> = {
-    first_name: "چیزی بنویسید…",
-    last_name: "چیزی بنویسید…",
-    animal: "مثلاً: ببر",
-    fruit: "چیزی بنویسید…",
-    city: "چیزی بنویسید…",
-    country: "چیزی بنویسید…",
-    food: "چیزی بنویسید…",
-  };
-  return map[key] ?? `با حرف «${letter}»…`;
-}
+const ANSWER_INPUT_PLACEHOLDER = "چیزی بنویسید…";
 
 function TimerRing({
   progress,
@@ -124,17 +80,13 @@ function TimerRing({
   const c = 2 * Math.PI * r;
   const offset = c * (1 - Math.min(1, Math.max(0, progress)));
   return (
-    <svg
-      className={className}
-      viewBox="0 0 100 100"
-      aria-hidden
-    >
+    <svg className={className} viewBox="0 0 100 100" aria-hidden>
       <circle
         cx="50"
         cy="50"
         r={r}
         fill="none"
-        stroke="var(--color-ka-surface-container-high)"
+        stroke="var(--color-border)"
         strokeWidth="8"
       />
       <circle
@@ -142,7 +94,7 @@ function TimerRing({
         cy="50"
         r={r}
         fill="none"
-        stroke="var(--color-ka-primary)"
+        stroke="var(--color-primary)"
         strokeWidth="8"
         strokeLinecap="round"
         strokeDasharray={c}
@@ -156,38 +108,38 @@ function TimerRing({
 
 export function GameClient({ roomCode }: { roomCode: string }) {
   const router = useRouter();
-  const [state, setState] = useState<GamePayload | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [tick, setTick] = useState(0);
-  const [form, setForm] = useState<Record<string, string>>({});
+  const [localError, setLocalError] = useState<string | null>(null);
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  const [formState, setFormState] = useState<{
+    roundId: string | null;
+    values: Record<string, string>;
+  }>({ roundId: null, values: {} });
   const [waitHint, setWaitHint] = useState<string | null>(null);
+  const [endGameDialogOpen, setEndGameDialogOpen] = useState(false);
+  const gameQuery = useGameStateByRoomQuery(roomCode);
+  const completeRoundMutation = useCompleteRoundMutation();
+  const nextRoundMutation = useNextRoundMutation();
+  const endGameMutation = useEndGameMutation();
+  const state = gameQuery.data ?? null;
+  const queryError =
+    gameQuery.error instanceof Error ? gameQuery.error.message : null;
+  const error = localError ?? queryError;
+  const busy =
+    completeRoundMutation.isPending ||
+    nextRoundMutation.isPending ||
+    endGameMutation.isPending;
 
   useSyncErrorToToast(error);
 
-  const load = useCallback(async () => {
-    try {
-      const data = await apiGet<GamePayload>(
-        `/api/game/state?roomCode=${encodeURIComponent(roomCode)}`,
-      );
-      setState(data);
-      setError(null);
-      if (data.phase === "none" || !data.game) {
-        router.replace(`/lobby/${roomCode}`);
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "خطا");
+  useEffect(() => {
+    if (!state) return;
+    if (state.phase === "none" || !state.game) {
+      router.replace(`/lobby/${roomCode}`);
     }
-  }, [roomCode, router]);
+  }, [state, roomCode, router]);
 
   useEffect(() => {
-    void load();
-    const id = setInterval(() => void load(), POLL_INTERVAL_MS);
-    return () => clearInterval(id);
-  }, [load]);
-
-  useEffect(() => {
-    const id = setInterval(() => setTick((t) => t + 1), 1000);
+    const id = setInterval(() => setNowMs(Date.now()), 1000);
     return () => clearInterval(id);
   }, []);
 
@@ -199,34 +151,25 @@ export function GameClient({ roomCode }: { roomCode: string }) {
 
   const isHost = state?.hostUserId === state?.meUserId;
 
-  const categoryKeysSig =
-    state?.categories?.map((c) => c.key).join("\0") ?? "";
+  function emptyFormForCurrentCategories() {
+    const next: Record<string, string> = {};
+    for (const c of state?.categories ?? []) next[c.key] = "";
+    return next;
+  }
 
-  /** Fresh empty row per round (and when category set changes). Layout effect avoids a flash of the previous round. */
-  useLayoutEffect(() => {
-    const rid = state?.round?.id;
-    const cats = state?.categories;
-    if (!rid || state?.phase !== "playing" || !categoryKeysSig || !cats?.length) {
-      return;
-    }
-    setForm(() => {
-      const next: Record<string, string> = {};
-      for (const c of cats) next[c.key] = "";
-      return next;
-    });
-  }, [state?.round?.id, state?.phase, categoryKeysSig]);
+  const currentRoundId = state?.round?.id ?? null;
+  const form =
+    formState.roundId === currentRoundId
+      ? formState.values
+      : emptyFormForCurrentCategories();
 
   const secondsLeft =
     state?.round == null
       ? 0
       : Math.max(
           0,
-          Math.ceil(
-            (new Date(state.round.endsAt).getTime() - Date.now()) / 1000,
-          ),
+          Math.ceil((new Date(state.round.endsAt).getTime() - nowMs) / 1000),
         );
-
-  void tick;
 
   async function completeRoundAction() {
     if (!state?.game) return;
@@ -235,22 +178,17 @@ export function GameClient({ roomCode }: { roomCode: string }) {
       state.categories.every((c) => (form[c.key] ?? "").trim().length > 0);
     if (!isHost && !allFilled) return;
 
-    setBusy(true);
     setWaitHint(null);
     try {
       const answers = state.categories.map((c) => ({
         categoryKey: c.key,
         value: form[c.key] ?? "",
       }));
-      const res = await apiPost<
-        | { outcome: "game_finished"; gameId: string }
-        | { outcome: "round_scored"; gameId: string }
-        | {
-            outcome: "waiting_for_players";
-            readyCount: number;
-            totalPlayers: number;
-          }
-      >("/api/game/complete-round", { roomCode, answers });
+      const res = await completeRoundMutation.mutateAsync({
+        roomCode,
+        answers,
+      });
+      setLocalError(null);
 
       if (res.outcome === "game_finished") {
         router.push(`/results/${res.gameId}`);
@@ -261,54 +199,67 @@ export function GameClient({ roomCode }: { roomCode: string }) {
           `${faDigits(res.readyCount)} از ${faDigits(res.totalPlayers)} نفر آماده‌اند؛ منتظر بقیه…`,
         );
       }
-      await load();
+      await gameQuery.refetch();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "خطا");
-    } finally {
-      setBusy(false);
+      setLocalError(e instanceof Error ? e.message : "خطا");
     }
   }
 
   async function startNextRound() {
-    setBusy(true);
     try {
-      const res = await apiPost<{ finished: boolean; gameId: string }>(
-        "/api/game/next-round",
-        { roomCode },
-      );
+      const res = await nextRoundMutation.mutateAsync({ roomCode });
       if (res.finished) {
         router.push(`/results/${res.gameId}`);
       } else {
-        await load();
+        await gameQuery.refetch();
       }
+      setLocalError(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "خطا");
-    } finally {
-      setBusy(false);
+      setLocalError(e instanceof Error ? e.message : "خطا");
     }
   }
 
-  async function forceEndGameCompletely() {
-    if (
-      !window.confirm(
-        "بازی برای همه بازیکنان تمام می‌شود و به صفحهٔ نتایج نهایی می‌روید. ادامه می‌دهید؟",
-      )
-    ) {
-      return;
-    }
-    setBusy(true);
+  function requestEndGame() {
+    setEndGameDialogOpen(true);
+  }
+
+  async function confirmEndGame() {
     try {
-      const { gameId } = await apiPost<{ gameId: string }>(
-        "/api/game/end-game",
-        { roomCode },
-      );
+      const { gameId } = await endGameMutation.mutateAsync({ roomCode });
+      setEndGameDialogOpen(false);
       router.push(`/results/${gameId}`);
+      setLocalError(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "خطا");
-    } finally {
-      setBusy(false);
+      setLocalError(e instanceof Error ? e.message : "خطا");
     }
   }
+
+  const endGameAlertDialog = (
+    <AlertDialog open={endGameDialogOpen} onOpenChange={setEndGameDialogOpen}>
+      <AlertDialogContent dir="rtl" className="text-right">
+        <AlertDialogHeader>
+          <AlertDialogTitle>پایان اجباری بازی؟</AlertDialogTitle>
+          <AlertDialogDescription>
+            بازی برای همه بازیکنان تمام می‌شود و به صفحهٔ نتایج نهایی می‌روید.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter className="sm:flex-row-reverse">
+          <Button
+            type="button"
+            variant="destructive"
+            disabled={busy}
+            className="min-h-11 w-full sm:w-auto"
+            onClick={() => void confirmEndGame()}
+          >
+            پایان بازی
+          </Button>
+          <AlertDialogCancel className="border-border">
+            انصراف
+          </AlertDialogCancel>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
 
   if (error && !state) {
     return (
@@ -321,7 +272,7 @@ export function GameClient({ roomCode }: { roomCode: string }) {
         </Alert>
         <Link
           href="/"
-          className="text-sm font-semibold text-ka-primary underline-offset-4 hover:underline"
+          className="text-sm font-semibold text-primary underline-offset-4 hover:underline"
         >
           خانه
         </Link>
@@ -331,8 +282,8 @@ export function GameClient({ roomCode }: { roomCode: string }) {
 
   if (state?.phase === "finished" && state.game) {
     return (
-      <div className="flex min-h-dvh flex-col items-center justify-center bg-ka-surface px-5 text-ka-on-surface">
-        <p className="font-medium text-ka-on-surface-variant">
+      <div className="flex min-h-dvh flex-col items-center justify-center bg-background px-5 text-foreground">
+        <p className="font-medium text-muted-foreground">
           در حال انتقال به نتایج نهایی…
         </p>
       </div>
@@ -362,9 +313,7 @@ export function GameClient({ roomCode }: { roomCode: string }) {
   const canComplete = isHost || allFieldsFilled;
 
   const timerProgress =
-    game.roundTimeSec > 0
-      ? Math.min(1, secondsLeft / game.roundTimeSec)
-      : 0;
+    game.roundTimeSec > 0 ? Math.min(1, secondsLeft / game.roundTimeSec) : 0;
 
   const mePlayer =
     g.meRoomPlayerId == null
@@ -380,8 +329,11 @@ export function GameClient({ roomCode }: { roomCode: string }) {
 
   function answersForCategory(catKey: string) {
     return g.players.map((p) => {
-      const a = p.answers.find((x) => x.categoryKey === catKey);
-      return { player: p, answer: a };
+      const answer = pickAnswerForCategory(
+        p.answers as unknown as Record<string, unknown>[],
+        catKey,
+      );
+      return { player: p, answer };
     });
   }
 
@@ -397,144 +349,126 @@ export function GameClient({ roomCode }: { roomCode: string }) {
 
   if (phase === "round_results") {
     return (
-      <div className="flex min-h-dvh flex-col bg-ka-surface pb-36 text-ka-on-surface">
-        <header className="sticky top-0 z-40 flex w-full items-center justify-between bg-white/80 px-5 py-4 shadow-[0_12px_32px_rgba(25,28,29,0.06)] backdrop-blur-xl">
-          <div className="flex items-center gap-3">
-            <div
-              className="flex size-10 shrink-0 items-center justify-center rounded-full bg-ka-primary-fixed font-heading text-lg font-black text-ka-on-primary-fixed"
-              aria-hidden
-            >
-              {displayInitial}
-            </div>
-            <span className="font-heading text-lg font-black tracking-tight text-ka-primary">
-              حرفچین
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5 rounded-full bg-ka-secondary-container px-3.5 py-1.5 font-heading text-sm font-semibold text-ka-on-secondary-container">
-            <span>{faDigits(myBoardScore)} امتیاز</span>
-            <Star className="size-4 fill-amber-600 text-amber-700" aria-hidden />
-          </div>
-        </header>
-
-        <main className="mx-auto w-full max-w-lg flex-1 space-y-5 px-5 pt-6">
-          {error ? (
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          ) : null}
-
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-xs text-ka-on-surface-variant">
-              اتاق{" "}
-              <span className="font-mono font-semibold text-foreground" dir="ltr">
-                {roomCode}
-              </span>
-            </p>
-            <div className="flex items-center gap-2 rounded-full bg-ka-primary-fixed/35 px-4 py-2 font-heading text-sm font-black text-ka-on-primary-fixed">
-              <span>حرف این دور</span>
-              <span className="text-lg">{letter}</span>
-            </div>
-          </div>
-
-          <Link
-            href={`/lobby/${roomCode}`}
-            className="inline-block text-sm font-semibold text-ka-on-surface-variant underline-offset-4 hover:underline"
-          >
-            بازگشت به لابی
-          </Link>
-
-          <section className="space-y-4">
-            <div className="text-center">
-              <h1 className="font-heading text-xl font-black text-ka-on-surface sm:text-2xl">
-                نتیجه این دور
-              </h1>
-              <p className="mt-1 text-sm font-medium text-ka-on-surface-variant">
-                دور {faDigits(round.roundNumber)} از {faDigits(game.totalRounds)}
-              </p>
-            </div>
-
-            <Card className="border-ka-outline-variant/40 ka-kinetic-shadow">
-              <CardHeader className="flex flex-row items-start justify-between gap-2 pb-2">
-                <div>
-                  <CardTitle className="font-heading text-base text-ka-primary">
-                    پاسخ‌ها و امتیاز
-                  </CardTitle>
-                  <p className="mt-0.5 text-xs text-ka-on-surface-variant">
-                    برای هر ردیف بازیکن را انتخاب کنید
-                  </p>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-0 pt-0">
-                <ul className="divide-y divide-ka-outline-variant/35">
-                  {g.categories.map((c) => {
-                    const Icon = categoryIcon(c.key);
-                    return (
-                      <li
-                        key={c.key}
-                        className="flex flex-col gap-3 py-4 first:pt-0 sm:flex-row sm:items-start sm:gap-4"
-                      >
-                        <span className="flex shrink-0 items-center gap-2.5 sm:w-[40%]">
-                          <Icon
-                            className="size-5 shrink-0 text-ka-primary"
-                            aria-hidden
-                          />
-                          <span className="text-xs font-bold text-ka-on-surface-variant">
-                            {c.title}
-                          </span>
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <CategoryPlayerTabs
-                            players={g.players}
-                            categoryKey={c.key}
-                            meRoomPlayerId={g.meRoomPlayerId}
-                            showScores
-                            isDuplicate={isDuplicate}
-                          />
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </CardContent>
-            </Card>
-
-            {!isHost ? (
-              <p className="text-center text-sm text-ka-on-surface-variant">
-                منتظر شروع دور بعد از طرف میزبان…
-              </p>
-            ) : null}
-
-            {isHost ? (
-              <div className="flex flex-col gap-2">
-                <Button
-                  type="button"
-                  variant="default"
-                  onClick={() => void startNextRound()}
-                  disabled={busy}
-                  className="ka-kinetic-shadow-lg h-auto w-full rounded-full py-5 font-heading text-base font-black"
-                >
-                  {isLastRound ? "پایان بازی و نتایج نهایی" : "دور بعد"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => void forceEndGameCompletely()}
-                  disabled={busy}
-                  className="h-8 gap-1.5 text-[11px] font-semibold text-red-600 hover:bg-red-50 hover:text-red-700"
-                >
-                  <OctagonX className="size-3.5 shrink-0" aria-hidden />
-                  پایان کامل بازی
-                </Button>
+      <>
+        <div className="flex min-h-dvh flex-col bg-background text-foreground">
+          <header className="sticky top-0 z-40 flex w-full items-center justify-between bg-white/80 px-5 py-4 shadow-[0_12px_32px_rgba(25,28,29,0.06)] backdrop-blur-xl">
+            <div className="flex items-center gap-3">
+              <div
+                className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/15 font-heading text-lg font-black text-primary"
+                aria-hidden
+              >
+                {displayInitial}
               </div>
-            ) : null}
-          </section>
-        </main>
+              <span className="font-heading text-lg font-black tracking-tight text-primary">
+                حرفچین
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 rounded-full bg-secondary px-3.5 py-1.5 font-heading text-sm font-semibold text-secondary-foreground">
+              <span>{faDigits(myBoardScore)} امتیاز</span>
+              <Star
+                className="size-4 fill-amber-600 text-amber-700"
+                aria-hidden
+              />
+            </div>
+          </header>
 
-        <div className="fixed bottom-0 left-0 z-50 w-full">
-          <GameBottomNav active="game" />
+          <main className="mx-auto w-full max-w-lg flex-1 space-y-5 px-5 pt-6">
+            {error ? (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            ) : null}
+
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-xs text-muted-foreground">
+                اتاق{" "}
+                <span
+                  className="font-mono font-semibold text-foreground"
+                  dir="ltr"
+                >
+                  {roomCode}
+                </span>
+              </p>
+              <div className="flex items-center gap-2 rounded-full bg-primary/15 px-4 py-2 font-heading text-sm font-black text-primary">
+                <span>حرف این دور</span>
+                <span className="text-lg">{letter}</span>
+              </div>
+            </div>
+
+            <Link
+              href={`/lobby/${roomCode}`}
+              className="inline-block text-sm font-semibold text-muted-foreground underline-offset-4 hover:underline"
+            >
+              بازگشت به لابی
+            </Link>
+
+            <section className="space-y-4">
+              <div className="text-center">
+                <h2 className="font-heading text-xl font-black text-foreground sm:text-2xl">
+                  نتیجه این دور
+                </h2>
+                <p className="mt-1 text-sm font-medium text-muted-foreground">
+                  دور {faDigits(round.roundNumber)} از{" "}
+                  {faDigits(game.totalRounds)}
+                </p>
+              </div>
+
+              <Card className="border-border/60 shadow-[0_12px_32px_rgba(25,28,29,0.06)]">
+                <CardHeader className="flex flex-row items-start justify-between gap-2 pb-2">
+                  <div>
+                    <CardTitle className="font-heading text-base text-primary">
+                      پاسخ‌ها و امتیاز
+                    </CardTitle>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      جدول زیر همه بازیکن‌ها و پاسخ هر دسته را نشان می‌دهد.
+                    </p>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-0 pt-0">
+                  <RoundResultsTable
+                    categories={g.categories}
+                    players={g.players}
+                    meRoomPlayerId={g.meRoomPlayerId}
+                    isDuplicate={isDuplicate}
+                  />
+                </CardContent>
+              </Card>
+
+              {!isHost ? (
+                <p className="text-center text-sm text-muted-foreground">
+                  منتظر شروع دور بعد از طرف میزبان…
+                </p>
+              ) : null}
+
+              {isHost ? (
+                <div className="flex flex-col gap-2">
+                  <Button
+                    type="button"
+                    variant="default"
+                    onClick={() => void startNextRound()}
+                    disabled={busy}
+                    className="h-auto w-full rounded-full py-5 font-heading text-base font-black shadow-lg"
+                  >
+                    {isLastRound ? "پایان بازی و نتایج نهایی" : "دور بعد"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => requestEndGame()}
+                    disabled={busy}
+                    className="h-8 gap-1.5 text-[11px] font-semibold text-red-600 hover:bg-red-50 hover:text-red-700"
+                  >
+                    <OctagonX className="size-3.5 shrink-0" aria-hidden />
+                    استپ
+                  </Button>
+                </div>
+              ) : null}
+            </section>
+          </main>
         </div>
-      </div>
+        {endGameAlertDialog}
+      </>
     );
   }
 
@@ -545,16 +479,16 @@ export function GameClient({ roomCode }: { roomCode: string }) {
           <div className="flex w-full items-center justify-between gap-2">
             <div className="flex min-w-0 items-center gap-3">
               <div
-                className="flex size-10 shrink-0 items-center justify-center rounded-full bg-ka-primary-fixed font-heading text-lg font-black text-ka-on-primary-fixed"
+                className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/15 font-heading text-lg font-black text-primary"
                 aria-hidden
               >
                 {displayInitial}
               </div>
               <div className="min-w-0 flex flex-col">
-                <span className="font-heading text-lg font-black tracking-tight text-ka-primary">
+                <span className="font-heading text-lg font-black tracking-tight text-primary">
                   حرفچین
                 </span>
-                <span className="text-[10px] font-medium text-ka-on-surface-variant opacity-80">
+                <span className="text-[10px] font-medium text-muted-foreground opacity-80">
                   اتاق{" "}
                   <span className="font-mono font-bold" dir="ltr">
                     {roomCode}
@@ -562,9 +496,12 @@ export function GameClient({ roomCode }: { roomCode: string }) {
                 </span>
               </div>
             </div>
-            <div className="flex shrink-0 items-center gap-1.5 rounded-full bg-ka-secondary-container px-3.5 py-1.5 font-heading text-sm font-semibold text-ka-on-secondary-container">
+            <div className="flex shrink-0 items-center gap-1.5 rounded-full bg-secondary px-3.5 py-1.5 font-heading text-sm font-semibold text-secondary-foreground">
               <span>{faDigits(myBoardScore)} امتیاز</span>
-              <Star className="size-4 fill-amber-600 text-amber-700" aria-hidden />
+              <Star
+                className="size-4 fill-amber-600 text-amber-700"
+                aria-hidden
+              />
             </div>
           </div>
           {isHost ? (
@@ -573,12 +510,12 @@ export function GameClient({ roomCode }: { roomCode: string }) {
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={() => void forceEndGameCompletely()}
+                onClick={() => requestEndGame()}
                 disabled={busy}
                 className="h-7 gap-1 px-2 text-[11px] font-semibold text-red-600 hover:bg-red-50 hover:text-red-700"
               >
                 <OctagonX className="size-3.5 shrink-0" aria-hidden />
-                پایان کامل بازی
+                استپ
               </Button>
             </div>
           ) : null}
@@ -586,7 +523,7 @@ export function GameClient({ roomCode }: { roomCode: string }) {
       </header>
 
       <main
-        className={`mx-auto w-full max-w-lg flex-1 space-y-8 px-5 pb-40 ${isHost ? "pt-29" : "pt-24"}`}
+        className={`mx-auto w-full max-w-lg flex-1 space-y-8 px-5 pb-10 ${isHost ? "pt-29" : "pt-24"}`}
       >
         {error ? (
           <Alert variant="destructive">
@@ -595,7 +532,7 @@ export function GameClient({ roomCode }: { roomCode: string }) {
         ) : null}
 
         {waitHint ? (
-          <p className="text-center text-sm font-medium text-ka-primary">
+          <p className="text-center text-sm font-medium text-primary">
             {waitHint}
           </p>
         ) : null}
@@ -606,20 +543,20 @@ export function GameClient({ roomCode }: { roomCode: string }) {
               progress={timerProgress}
               className="absolute inset-0 size-full"
             />
-            <div className="relative z-10 flex size-36 items-center justify-center rounded-full bg-ka-surface-container-lowest ka-kinetic-shadow">
-              <span className="font-heading text-7xl font-black leading-none text-ka-primary sm:text-8xl">
+            <div className="relative z-10 flex size-36 items-center justify-center rounded-full bg-card shadow-[0_12px_32px_rgba(25,28,29,0.06)]">
+              <span className="font-heading text-7xl font-black leading-none text-primary sm:text-8xl">
                 {letter}
               </span>
             </div>
-            <div className="absolute bottom-1 z-20 rounded-full bg-ka-secondary-container px-4 py-1 font-heading text-lg font-bold text-ka-on-secondary-container shadow-md">
+            <div className="absolute bottom-1 z-20 rounded-full bg-secondary px-4 py-1 font-heading text-lg font-bold text-secondary-foreground shadow-md">
               {faDigits(secondsLeft)} ثانیه
             </div>
           </div>
           <div className="space-y-1 text-center">
-            <h1 className="font-heading text-2xl font-black text-ka-on-surface">
+            <p className="font-heading text-2xl font-black text-foreground">
               در حال بازی…
-            </h1>
-            <p className="text-sm font-medium text-ka-on-surface-variant opacity-[0.85]">
+            </p>
+            <p className="text-sm font-medium text-muted-foreground opacity-[0.85]">
               همه کلمات باید با حرف «{letter}» شروع شوند
             </p>
           </div>
@@ -639,7 +576,7 @@ export function GameClient({ roomCode }: { roomCode: string }) {
                 size="sm"
                 className={
                   highlighted
-                    ? "group border-2 border-ka-primary/25 bg-violet-50/90 dark:bg-violet-950/25"
+                    ? "group border-2 border-primary/25 bg-violet-50/90 dark:bg-violet-950/25"
                     : "group border border-zinc-100 bg-white dark:border-zinc-800 dark:bg-zinc-900"
                 }
               >
@@ -647,7 +584,7 @@ export function GameClient({ roomCode }: { roomCode: string }) {
                   <CardTitle
                     className={
                       highlighted
-                        ? "text-xs font-bold tracking-wide text-ka-primary uppercase"
+                        ? "text-xs font-bold tracking-wide text-primary uppercase"
                         : "text-xs font-bold tracking-wide text-zinc-400 uppercase"
                     }
                   >
@@ -657,13 +594,13 @@ export function GameClient({ roomCode }: { roomCode: string }) {
                 <CardContent className="flex items-center gap-3 pb-4 pt-0">
                   {highlighted ? (
                     <Icon
-                      className="size-6 shrink-0 self-center text-ka-primary"
+                      className="size-6 shrink-0 self-center text-primary"
                       strokeWidth={2.5}
                       aria-hidden
                     />
                   ) : (
                     <Icon
-                      className="size-6 shrink-0 self-center text-zinc-300 transition-colors group-focus-within:text-ka-primary"
+                      className="size-6 shrink-0 self-center text-zinc-300 transition-colors group-focus-within:text-primary"
                       aria-hidden
                     />
                   )}
@@ -671,7 +608,16 @@ export function GameClient({ roomCode }: { roomCode: string }) {
                     id={`cat-${c.key}`}
                     value={raw}
                     onChange={(e) =>
-                      setForm((f) => ({ ...f, [c.key]: e.target.value }))
+                      setFormState((prev) => {
+                        const base =
+                          prev.roundId === currentRoundId
+                            ? prev.values
+                            : emptyFormForCurrentCategories();
+                        return {
+                          roundId: currentRoundId,
+                          values: { ...base, [c.key]: e.target.value },
+                        };
+                      })
                     }
                     onKeyDown={(e) => {
                       if (e.key !== "Enter") return;
@@ -680,16 +626,14 @@ export function GameClient({ roomCode }: { roomCode: string }) {
                       if (nextCat) {
                         document.getElementById(`cat-${nextCat.key}`)?.focus();
                       } else {
-                        document
-                          .getElementById("game-end-round-submit")
-                          ?.focus();
+                        document.getElementById("round-end-submit")?.focus();
                       }
                     }}
                     enterKeyHint={isLastField ? "done" : "next"}
                     dir="auto"
                     autoComplete="off"
-                    placeholder={categoryPlaceholder(c.key, letter)}
-                    className="h-14 min-h-14 flex-1 rounded-xl border-0 bg-ka-surface-container-low px-4 py-3 text-base font-semibold text-ka-on-background shadow-[inset_0_1px_2px_rgb(0_0_0/0.04)] placeholder:text-ka-outline-variant/90 focus-visible:ring-2 focus-visible:ring-ka-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-ka-background md:text-base"
+                    placeholder={ANSWER_INPUT_PLACEHOLDER}
+                    className="h-14 min-h-14 flex-1 rounded-xl border-0 bg-secondary px-4 py-3 text-base font-semibold text-foreground shadow-[inset_0_1px_2px_rgb(0_0_0/0.04)] placeholder:text-muted-foreground/90 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background md:text-base"
                   />
                 </CardContent>
               </Card>
@@ -697,89 +641,88 @@ export function GameClient({ roomCode }: { roomCode: string }) {
           })}
         </section>
 
-        <p className="text-center text-xs text-ka-on-surface-variant">
+        <p className="text-center text-xs text-muted-foreground">
           <Link
             href={`/lobby/${roomCode}`}
-            className="text-xs font-medium text-ka-on-surface-variant underline-offset-4 hover:underline"
+            className="text-xs font-medium text-muted-foreground underline-offset-4 hover:underline"
           >
             بازگشت به لابی
           </Link>
         </p>
       </main>
 
-      <div className="fixed bottom-0 left-0 z-50 w-full">
-        <div className="relative z-20 flex justify-center pb-1">
+      <div className="pb-6">
+        <div className="relative z-20 flex justify-center">
           <Button
-            id="game-end-round-submit"
+            id="round-end-submit"
             type="button"
             size="lg"
             onClick={() => void completeRoundAction()}
             disabled={busy || !canComplete}
-            className="ka-kinetic-shadow-lg h-auto gap-3 rounded-full px-10 py-5 font-heading text-xl font-black shadow-lg"
+            className="h-auto gap-3 rounded-full px-10 py-5 font-heading text-xl font-black shadow-lg"
           >
             <span>پایان دور</span>
             <Hand className="size-7" aria-hidden />
           </Button>
         </div>
-        <GameBottomNav active="game" />
       </div>
     </>
   );
 
   if (phase === "processing_round") {
     return (
-      <div
-        className="flex min-h-dvh flex-col bg-ka-surface pb-24 text-ka-on-surface"
-        dir="rtl"
-      >
-        <div className="flex flex-1 flex-col items-center justify-center gap-4 px-5">
-          <div
-            className="size-12 animate-spin rounded-full border-4 border-ka-primary/20 border-t-ka-primary"
-            aria-hidden
-          />
-          <p className="max-w-sm text-center text-sm font-medium text-ka-on-surface-variant">
-            در حال پایان دور و محاسبه امتیاز…
-          </p>
-          {isHost ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => void forceEndGameCompletely()}
-              disabled={busy}
-              className="h-8 gap-1.5 text-[11px] font-semibold text-red-600 hover:bg-red-50 hover:text-red-700"
-            >
-              <OctagonX className="size-3.5 shrink-0" aria-hidden />
-              پایان کامل بازی
-            </Button>
-          ) : null}
+      <>
+        <div
+          className="flex min-h-dvh flex-col bg-background text-foreground"
+          dir="rtl"
+        >
+          <div className="flex flex-1 flex-col items-center justify-center gap-4 px-5">
+            <div
+              className="size-12 animate-spin rounded-full border-4 border-primary/20 border-t-primary"
+              aria-hidden
+            />
+            <p className="max-w-sm text-center text-sm font-medium text-muted-foreground">
+              در حال پایان دور و محاسبه امتیاز…
+            </p>
+            {isHost ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => requestEndGame()}
+                disabled={busy}
+                className="h-8 gap-1.5 text-[11px] font-semibold text-red-600 hover:bg-red-50 hover:text-red-700"
+              >
+                <OctagonX className="size-3.5 shrink-0" aria-hidden />
+                استپ
+              </Button>
+            ) : null}
+          </div>
         </div>
-        <div className="fixed bottom-0 left-0 z-50 w-full">
-          <GameBottomNav active="game" />
-        </div>
-      </div>
+        {endGameAlertDialog}
+      </>
     );
   }
 
   if (phase === "playing") {
     return (
-      <div className="flex min-h-dvh flex-col bg-ka-surface text-ka-on-surface">
-        {playingChrome}
-      </div>
+      <>
+        <div className="flex min-h-dvh flex-col bg-background text-foreground">
+          {playingChrome}
+        </div>
+        {endGameAlertDialog}
+      </>
     );
   }
 
   return (
     <div
-      className="flex min-h-dvh flex-col items-center justify-center bg-ka-surface px-5 text-ka-on-surface"
+      className="flex min-h-dvh flex-col items-center justify-center bg-background px-5 text-foreground"
       dir="rtl"
     >
-      <p className="text-center text-sm text-ka-on-surface-variant">
+      <p className="text-center text-sm text-muted-foreground">
         وضعیت بازی به‌روزرسانی می‌شود…
       </p>
-      <div className="fixed bottom-0 left-0 z-50 w-full">
-        <GameBottomNav active="game" />
-      </div>
     </div>
   );
 }

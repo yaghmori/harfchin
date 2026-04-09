@@ -47,7 +47,7 @@ function ChatMessageRow({
           <span
             className={cn(
               "block text-[10px] font-bold",
-              isMine ? "text-ka-primary/60" : "text-muted-foreground",
+              isMine ? "text-primary/60" : "text-muted-foreground",
             )}
           >
             {isMine ? "شما" : message.displayName}
@@ -56,8 +56,8 @@ function ChatMessageRow({
             className={cn(
               "rounded-2xl px-4 py-2.5 text-xs font-medium leading-relaxed shadow-sm",
               isMine
-                ? "rounded-bl-md bg-ka-primary text-white shadow-md shadow-ka-primary/25"
-                : "rounded-br-md bg-ka-surface-container-low text-ka-on-background",
+                ? "rounded-bl-md bg-primary text-white shadow-md shadow-primary/25"
+                : "rounded-br-md bg-secondary text-foreground",
             )}
           >
             {message.body}
@@ -96,15 +96,15 @@ export function LobbyChat({
 
   return (
     <section className="mb-4">
-      <Card className="flex max-h-[min(500px,55vh)] flex-col overflow-hidden rounded-[2rem] border-ka-surface-container-high shadow-[0_12px_32px_rgba(25,28,29,0.06)]">
-        <CardHeader className="flex flex-row items-center justify-between border-b border-ka-surface-container bg-ka-surface-container-lowest/50 py-4 backdrop-blur-md">
+      <Card className="flex max-h-[min(500px,55vh)] flex-col overflow-hidden rounded-[2rem] border-border/60 shadow-[0_12px_32px_rgba(25,28,29,0.06)]">
+        <CardHeader className="flex flex-row items-center justify-between border-b border-border/50 bg-card/70 py-4 backdrop-blur-md">
           <div className="flex items-center gap-3">
-            <div className="flex size-8 items-center justify-center rounded-xl bg-ka-primary/10">
-              <MessageCircle className="size-5 text-ka-primary" aria-hidden />
+            <div className="flex size-8 items-center justify-center rounded-xl bg-primary/10">
+              <MessageCircle className="size-5 text-primary" aria-hidden />
             </div>
             <div>
               <CardTitle className="text-sm font-black">گپ و گفت اتاق</CardTitle>
-              <p className="text-[9px] font-bold text-ka-primary/60">
+              <p className="text-[9px] font-bold text-primary/60">
                 پیام‌ها برای اعضای اتاق ذخیره می‌شوند
               </p>
             </div>
@@ -113,7 +113,7 @@ export function LobbyChat({
             type="button"
             variant="ghost"
             size="icon-sm"
-            className="text-ka-on-surface-variant"
+            className="text-muted-foreground"
             aria-label="بیشتر"
           >
             <MoreVertical className="size-4" />
@@ -121,11 +121,11 @@ export function LobbyChat({
         </CardHeader>
         <CardContent
           ref={chatScrollRef}
-          className="flex-1 overflow-y-auto scroll-smooth bg-[radial-gradient(#e8e8e8_1px,transparent_1px)] [background-size:20px_20px] py-4 dark:bg-[radial-gradient(rgb(39_39_42/0.5)_1px,transparent_1px)]"
+          className="flex-1 overflow-y-auto scroll-smooth bg-[radial-gradient(#e8e8e8_1px,transparent_1px)] bg-size-[20px_20px] py-4 dark:bg-[radial-gradient(rgb(39_39_42/0.5)_1px,transparent_1px)]"
         >
           <div className="space-y-5 px-2">
             {messages.length === 0 ? (
-              <p className="py-8 text-center text-sm text-ka-on-surface-variant">
+              <p className="py-8 text-center text-sm text-muted-foreground">
                 هنوز پیامی نیست — اولین نفری باشید که سلام می‌کند.
               </p>
             ) : null}
@@ -139,7 +139,7 @@ export function LobbyChat({
             <div ref={messagesEndRef} />
           </div>
         </CardContent>
-        <CardFooter className="border-t border-ka-surface-container bg-ka-surface-container-lowest">
+        <CardFooter className="border-t border-border/50 bg-card">
           <form
             className="flex w-full items-center gap-2"
             onSubmit={onSubmit}
@@ -148,7 +148,7 @@ export function LobbyChat({
               type="button"
               variant="ghost"
               size="icon-lg"
-              className="shrink-0 text-ka-on-surface-variant hover:text-ka-primary"
+              className="shrink-0 text-muted-foreground hover:text-primary"
               aria-label="ایموجی"
               onClick={() => {
                 onChatDraftChange(chatDraft + "😊");
@@ -169,7 +169,7 @@ export function LobbyChat({
               type="submit"
               variant="default"
               size="icon-lg"
-              className="shrink-0 rounded-2xl shadow-lg shadow-ka-primary/20"
+              className="shrink-0 rounded-2xl shadow-lg shadow-primary/20"
               disabled={chatBusy || !chatDraft.trim() || chatDisabled}
               aria-label="ارسال"
             >

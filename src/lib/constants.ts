@@ -30,3 +30,6 @@ export const MAX_CHAT_MESSAGE_LENGTH = 500;
 
 /** Polling interval for game state when not using SSE. */
 export const POLL_INTERVAL_MS = 2500;
+
+/** Default avatar for the signed-in user (top bar, profile). */
+export const DEFAULT_USER_AVATAR_SRC = "/avatar.svg";

@@ -1,5 +1,7 @@
 import { AppShell } from "@/components/layout/AppShell";
 import { resolveShellAuthMode } from "@/components/layout/shell-auth";
+import { getUserShopBalance } from "@/server/services/coin-shop.service";
+import { getProfileForUser } from "@/server/services/profile.service";
 import { getSessionUser } from "@/server/session";
 
 export default async function AppLayout({
@@ -10,15 +12,14 @@ export default async function AppLayout({
   const user = await getSessionUser();
   const authMode = resolveShellAuthMode(user);
 
-  const displayName = user?.name?.trim() ?? "";
-  const userInitial =
-    authMode === "anonymous"
-      ? "?"
-      : displayName.length > 0
-        ? displayName.charAt(0)
-        : authMode === "guest"
-          ? "م"
-          : user?.email?.charAt(0) ?? "?";
+  const profile =
+    authMode === "registered" && user
+      ? await getProfileForUser(user.id)
+      : null;
+  const topBarCoins =
+    profile != null && user
+      ? await getUserShopBalance(user.id, profile.totalScore)
+      : undefined;
 
   const bottomNavAccount =
     authMode === "registered"
@@ -33,8 +34,8 @@ export default async function AppLayout({
   return (
     <AppShell
       authMode={authMode}
-      userInitial={userInitial}
       bottomNavAccount={bottomNavAccount}
+      topBarCoins={topBarCoins}
     >
       {children}
     </AppShell>

@@ -8,6 +8,6 @@ export function resolveShellAuthMode(user: {
 } | null): ShellAuthMode {
   if (!user) return "anonymous";
   if (user.isGuest) return "guest";
-  if (user.email && user.passwordHash) return "registered";
+  if (user.passwordHash) return "registered";
   return "guest";
 }

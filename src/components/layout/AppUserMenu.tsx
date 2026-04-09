@@ -1,69 +1,51 @@
 "use client";
 
-import { apiPost } from "@/features/api/client";
-import { cn } from "@/lib/utils";
 import type { ShellAuthMode } from "@/components/layout/shell-auth";
+import { Button } from "@/components/ui/button";
 import {
-  LogIn,
-  LogOut,
-  PencilLine,
-  UserPlus,
-  UserRound,
-} from "lucide-react";
-import Link from "next/link";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useLogoutMutation } from "@/hooks/api-mutations";
+import { LogIn, LogOut, PencilLine, UserPlus, UserRound } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
-import type { ComponentType } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import Image from "next/image";
+import { useCallback } from "react";
 import { toast } from "sonner";
 
 type AppUserMenuProps = {
   mode: ShellAuthMode;
-  userInitial: string;
+  /** Shown in the top-bar trigger for the signed-in user (e.g. `/avatar.svg`). */
+  accountAvatarSrc: string;
 };
 
-export function AppUserMenu({ mode, userInitial }: AppUserMenuProps) {
-  const [open, setOpen] = useState(false);
-  const wrapRef = useRef<HTMLDivElement>(null);
+export function AppUserMenu({ mode, accountAvatarSrc }: AppUserMenuProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const [logoutBusy, setLogoutBusy] = useState(false);
+  const logoutMutation = useLogoutMutation();
+  const logoutBusy = logoutMutation.isPending;
 
   const fromParam =
     pathname && pathname !== "/login" && pathname !== "/signup"
       ? `?from=${encodeURIComponent(pathname)}`
       : "";
 
-  useEffect(() => {
-    if (!open) return;
-    function onDoc(e: MouseEvent) {
-      if (wrapRef.current?.contains(e.target as Node)) return;
-      setOpen(false);
-    }
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
-    }
-    document.addEventListener("mousedown", onDoc);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDoc);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
-
   const onLogout = useCallback(async () => {
-    setLogoutBusy(true);
     try {
-      await apiPost<{ ok: boolean }>("/api/auth/logout", {});
+      await logoutMutation.mutateAsync();
       toast.success("از حساب کاربری خارج شدید.");
-      setOpen(false);
       router.push("/");
       router.refresh();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "خروج ناموفق بود.");
     } finally {
-      setLogoutBusy(false);
+      logoutMutation.reset();
     }
-  }, [router]);
+  }, [logoutMutation, router]);
 
   const menuAria =
     mode === "registered"
@@ -73,90 +55,82 @@ export function AppUserMenu({ mode, userInitial }: AppUserMenuProps) {
         : "منو — ورود یا ثبت‌نام";
 
   return (
-    <div className="relative shrink-0" ref={wrapRef}>
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className={cn(
-          "flex size-10 items-center justify-center rounded-full p-0.5 ring-2 ring-violet-200/80 transition-colors hover:bg-violet-50/80",
-          "outline-none focus-visible:ring-2 focus-visible:ring-[#7E3AF2] focus-visible:ring-offset-2",
-          "dark:ring-violet-800 dark:hover:bg-violet-950/50",
-        )}
-        aria-expanded={open}
-        aria-haspopup="menu"
-        aria-label={menuAria}
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-10 rounded-full border border-border/70 p-0.5 hover:bg-accent/70 data-[popup-open]:bg-accent/70"
+            aria-label={menuAria}
+          />
+        }
       >
-        <span className="flex size-full items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-violet-700 text-sm font-black text-white">
-          {userInitial}
+        <span className="relative flex size-full overflow-hidden rounded-full bg-muted">
+          <Image
+            src={accountAvatarSrc}
+            alt="آواتار حساب کاربری"
+            fill
+            className="object-cover"
+            sizes="40px"
+            unoptimized
+          />
         </span>
-      </button>
+      </DropdownMenuTrigger>
 
-      {open ? (
-        <div
-          role="menu"
-          className="absolute end-0 top-[calc(100%+0.5rem)] z-[60] min-w-[11.5rem] rounded-2xl border border-violet-200/80 bg-card py-1.5 shadow-lg dark:border-violet-900/50 dark:bg-zinc-900"
-        >
-          {mode === "registered" ? (
-            <>
-              <MenuLink href="/profile" icon={UserRound} onNavigate={() => setOpen(false)}>
-                پروفایل
-              </MenuLink>
-              <MenuLink href="/profile/edit" icon={PencilLine} onNavigate={() => setOpen(false)}>
-                ویرایش پروفایل
-              </MenuLink>
-              <hr className="my-1 border-violet-100 dark:border-violet-900/60" />
-              <button
-                type="button"
-                role="menuitem"
-                disabled={logoutBusy}
-                onClick={() => void onLogout()}
-                className="flex w-full items-center gap-2 px-3 py-2.5 text-start text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50 dark:text-red-400 dark:hover:bg-red-950/40"
-              >
-                <LogOut className="size-4 shrink-0" aria-hidden />
-                خروج از حساب
-              </button>
-            </>
-          ) : (
-            <>
-              {mode === "guest" ? (
-                <p className="px-3 py-2 text-xs font-medium text-muted-foreground">
-                  با ورود، امتیاز و پروفایلتان ذخیره می‌شود.
-                </p>
-              ) : null}
-              <MenuLink href={`/login${fromParam}`} icon={LogIn} onNavigate={() => setOpen(false)}>
-                ورود
-              </MenuLink>
-              <MenuLink href={`/signup${fromParam}`} icon={UserPlus} onNavigate={() => setOpen(false)}>
-                ثبت‌نام
-              </MenuLink>
-            </>
-          )}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function MenuLink({
-  href,
-  icon: Icon,
-  children,
-  onNavigate,
-}: {
-  href: string;
-  icon: ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
-  children: React.ReactNode;
-  onNavigate: () => void;
-}) {
-  return (
-    <Link
-      href={href}
-      role="menuitem"
-      onClick={onNavigate}
-      className="flex items-center gap-2 px-3 py-2.5 text-sm font-semibold text-foreground hover:bg-violet-50 dark:hover:bg-violet-950/40"
-    >
-      <Icon className="size-4 shrink-0 text-[#7E3AF2]" aria-hidden />
-      {children}
-    </Link>
+      <DropdownMenuContent align="end" sideOffset={8} className="min-w-46 ">
+        {mode === "registered" ? (
+          <>
+            <DropdownMenuItem
+              onClick={() => router.push("/profile")}
+              className="gap-2 px-2.5 py-2 font-semibold"
+            >
+              <UserRound className="size-4 text-primary" aria-hidden />
+              پروفایل
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => router.push("/profile/edit")}
+              className="gap-2 px-2.5 py-2 font-semibold"
+            >
+              <PencilLine className="size-4 text-primary" aria-hidden />
+              ویرایش پروفایل
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              variant="destructive"
+              disabled={logoutBusy}
+              onClick={() => void onLogout()}
+              className="gap-2 px-2.5 py-2 font-semibold"
+            >
+              <LogOut className="size-4" aria-hidden />
+              خروج از حساب
+            </DropdownMenuItem>
+          </>
+        ) : (
+          <>
+            {mode === "guest" ? (
+              <DropdownMenuLabel className="px-2.5 py-2 text-xs">
+                با ورود، امتیاز و پروفایلتان ذخیره می‌شود.
+              </DropdownMenuLabel>
+            ) : null}
+            <DropdownMenuItem
+              onClick={() => router.push(`/login${fromParam}`)}
+              className="gap-2 px-2.5 py-2 font-semibold"
+            >
+              <LogIn className="size-4 text-primary" aria-hidden />
+              ورود
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => router.push(`/signup${fromParam}`)}
+              className="gap-2 px-2.5 py-2 font-semibold"
+            >
+              <UserPlus className="size-4 text-primary" aria-hidden />
+              ثبت‌نام
+            </DropdownMenuItem>
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

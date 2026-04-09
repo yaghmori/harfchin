@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default async function ProfileEditPage() {
   const user = await getSessionUser();
-  if (!user?.email || user.isGuest || !user.passwordHash) {
+  if (!user || user.isGuest || !user.passwordHash) {
     redirect("/login?from=/profile/edit");
   }
 
@@ -22,7 +22,7 @@ export default async function ProfileEditPage() {
   return (
     <ProfileEditClient
       initialName={data.user.name ?? ""}
-      email={data.user.email ?? ""}
+      accountIdentifier={data.user.email ?? data.user.name ?? ""}
     />
   );
 }

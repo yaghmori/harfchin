@@ -1,20 +1,20 @@
 "use client";
 
+import { useLogoutMutation } from "@/hooks/api-mutations";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import { Button } from "@/components/ui/button";
-import { apiPost } from "@/features/api/client";
 import { LogOut } from "lucide-react";
 import { toast } from "sonner";
 
 export function ProfileLogoutButton() {
   const router = useRouter();
-  const [pending, setPending] = React.useState(false);
+  const logoutMutation = useLogoutMutation();
+  const pending = logoutMutation.isPending;
 
   async function onLogout() {
-    setPending(true);
     try {
-      await apiPost<{ ok: boolean }>("/api/auth/logout", {});
+      await logoutMutation.mutateAsync();
       toast.success("از حساب کاربری خارج شدید.");
       router.push("/");
       router.refresh();
@@ -23,7 +23,7 @@ export function ProfileLogoutButton() {
         e instanceof Error ? e.message : "خروج ناموفق بود.",
       );
     } finally {
-      setPending(false);
+      logoutMutation.reset();
     }
   }
 

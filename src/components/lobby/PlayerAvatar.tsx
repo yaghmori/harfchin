@@ -26,10 +26,10 @@ export function PlayerAvatar({
   return (
     <div
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-full bg-ka-primary-fixed font-black text-ka-on-primary-fixed ring-ka-primary/10",
+        "flex shrink-0 items-center justify-center rounded-full bg-primary/15 font-black text-primary ring-primary/10",
         sz,
         dimmed && "opacity-40 grayscale",
-        size === "lg" && "ring-4 ring-ka-primary-fixed",
+        size === "lg" && "ring-4 ring-primary/20",
         className,
       )}
       aria-hidden

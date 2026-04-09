@@ -7,7 +7,7 @@ export async function GET() {
     if (!user) {
       return jsonOk({ user: null });
     }
-    const registered = Boolean(user.email && !user.isGuest);
+    const registered = Boolean(!user.isGuest && user.passwordHash);
     return jsonOk({
       user: {
         id: user.id,

@@ -9,6 +9,7 @@ import * as categoryRepo from "@/server/repositories/category.repository";
 import * as roundReadyRepo from "@/server/repositories/round-ready.repository";
 import { validateAnswer } from "@/server/services/validation.service";
 import * as scoringService from "@/server/services/scoring.service";
+import * as coinService from "@/server/services/coin.service";
 import { emitRoomUpdate } from "@/server/realtime/room-events";
 import {
   assertGameStartable,
@@ -194,6 +195,14 @@ export async function startGame(params: { userId: string; roomCode: string }) {
   if (!room) throw new AppError("NOT_FOUND", "اتاق پیدا نشد.");
   if (room.hostId !== params.userId) {
     throw new AppError("FORBIDDEN", "فقط میزبان می‌تواند بازی را شروع کند.");
+  }
+
+  const hostInRoom = room.players.some((p) => p.userId === room.hostId);
+  if (!hostInRoom) {
+    throw new AppError(
+      "BAD_STATE",
+      "میزبان در لابی حضور ندارد؛ پس از بازگشت میزبان می‌توان بازی را شروع کرد.",
+    );
   }
 
   assertRoomCanStartGame(room.status);
@@ -449,6 +458,7 @@ export async function nextRound(params: { userId: string; roomCode: string }) {
         data: { status: "finished" },
       }),
     ]);
+    await coinService.awardCoinsForFinishedGame(game.id);
     emitRoomUpdate(params.roomCode);
     return { finished: true as const, gameId: game.id };
   }
@@ -514,6 +524,7 @@ export async function forceEndGame(params: {
         data: { status: "finished" },
       }),
     ]);
+    await coinService.awardCoinsForFinishedGame(game.id);
     emitRoomUpdate(params.roomCode);
     return { gameId: game.id };
   }
@@ -563,6 +574,7 @@ export async function forceEndGame(params: {
   });
 
   emitRoomUpdate(params.roomCode);
+  await coinService.awardCoinsForFinishedGame(game.id);
   return { gameId: game.id };
 }
 
@@ -604,10 +616,10 @@ export async function getGameStateByRoomCode(roomCode: string) {
       const list = answersByPlayer.get(a.roomPlayerId) ?? [];
       list.push({
         categoryKey: a.category.key,
-        value: a.value,
-        normalizedValue: a.normalizedValue,
-        isValid: a.isValid,
-        score: a.score,
+        value: a.value ?? "",
+        normalizedValue: a.normalizedValue ?? "",
+        isValid: Boolean(a.isValid),
+        score: Math.trunc(Number(a.score)) || 0,
       });
       answersByPlayer.set(a.roomPlayerId, list);
     }
@@ -623,7 +635,7 @@ export async function getGameStateByRoomCode(roomCode: string) {
       .map((ps) => ({
         roomPlayerId: ps.roomPlayerId,
         displayName: ps.roomPlayer.displayName,
-        totalScore: ps.totalScore,
+        totalScore: Math.trunc(Number(ps.totalScore)) || 0,
       }))
       .sort((a, b) => b.totalScore - a.totalScore);
 
@@ -701,10 +713,10 @@ export async function getGameStateByRoomCode(roomCode: string) {
     const list = answersByPlayer.get(a.roomPlayerId) ?? [];
     list.push({
       categoryKey: a.category.key,
-      value: a.value,
-      normalizedValue: a.normalizedValue,
-      isValid: a.isValid,
-      score: a.score,
+      value: a.value ?? "",
+      normalizedValue: a.normalizedValue ?? "",
+      isValid: Boolean(a.isValid),
+      score: Math.trunc(Number(a.score)) || 0,
     });
     answersByPlayer.set(a.roomPlayerId, list);
   }
@@ -720,7 +732,7 @@ export async function getGameStateByRoomCode(roomCode: string) {
     .map((ps) => ({
       roomPlayerId: ps.roomPlayerId,
       displayName: ps.roomPlayer.displayName,
-      totalScore: ps.totalScore,
+      totalScore: Math.trunc(Number(ps.totalScore)) || 0,
     }))
     .sort((a, b) => b.totalScore - a.totalScore);
 
@@ -763,7 +775,7 @@ export async function getGameStateByGameId(gameId: string) {
     .map((ps) => ({
       roomPlayerId: ps.roomPlayerId,
       displayName: ps.roomPlayer.displayName,
-      totalScore: ps.totalScore,
+      totalScore: Math.trunc(Number(ps.totalScore)) || 0,
     }))
     .sort((a, b) => b.totalScore - a.totalScore);
 
@@ -797,10 +809,10 @@ export async function getGameStateByGameId(gameId: string) {
       const list = answersByPlayer.get(a.roomPlayerId) ?? [];
       list.push({
         categoryKey: a.category.key,
-        value: a.value,
-        normalizedValue: a.normalizedValue,
-        isValid: a.isValid,
-        score: a.score,
+        value: a.value ?? "",
+        normalizedValue: a.normalizedValue ?? "",
+        isValid: Boolean(a.isValid),
+        score: Math.trunc(Number(a.score)) || 0,
       });
       answersByPlayer.set(a.roomPlayerId, list);
     }
@@ -839,10 +851,10 @@ export async function getGameStateByGameId(gameId: string) {
         const list = answersByPlayer.get(a.roomPlayerId) ?? [];
         list.push({
           categoryKey: a.category.key,
-          value: a.value,
-          normalizedValue: a.normalizedValue,
-          isValid: a.isValid,
-          score: a.score,
+          value: a.value ?? "",
+          normalizedValue: a.normalizedValue ?? "",
+          isValid: Boolean(a.isValid),
+          score: Math.trunc(Number(a.score)) || 0,
         });
         answersByPlayer.set(a.roomPlayerId, list);
       }

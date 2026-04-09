@@ -1,6 +1,11 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
+import {
+  formatAnswerCellText,
+  pickAnswerForCategory,
+  showInvalidBadge,
+} from "@/components/game/round-answer-utils";
 import { faDigits } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useMemo, useState } from "react";
@@ -71,7 +76,10 @@ export function CategoryPlayerTabs({
 
   const selected =
     visible.find((p) => p.id === activeId) ?? visible[0]!;
-  const answer = selected.answers.find((a) => a.categoryKey === categoryKey);
+  const answer = pickAnswerForCategory(
+    selected.answers as unknown as Record<string, unknown>[],
+    categoryKey,
+  );
   const dup =
     answer &&
     isDuplicate(categoryKey, answer.normalizedValue, answer.isValid);
@@ -95,8 +103,8 @@ export function CategoryPlayerTabs({
               className={cn(
                 "shrink-0 rounded-full px-3 py-1.5 text-[11px] font-bold transition-colors",
                 on
-                  ? "bg-ka-primary text-white shadow-sm"
-                  : "bg-ka-surface-container-high text-ka-on-surface-variant hover:bg-ka-surface-container-highest",
+                  ? "bg-primary text-white shadow-sm"
+                  : "bg-secondary text-muted-foreground hover:bg-muted",
               )}
             >
               {p.displayName}
@@ -110,10 +118,15 @@ export function CategoryPlayerTabs({
         })}
       </div>
       <div className="text-start" dir="auto">
-        <span className="font-semibold text-foreground">
-          {answer?.value?.trim() ? answer.value : "—"}
+        <span
+          className={cn(
+            "font-semibold text-foreground",
+            formatAnswerCellText(answer) === "—" && "text-muted-foreground",
+          )}
+        >
+          {formatAnswerCellText(answer)}
         </span>
-        {answer && !answer.isValid ? (
+        {showInvalidBadge(answer) ? (
           <Badge variant="destructive" className="ms-2 mt-1 align-middle">
             نامعتبر
           </Badge>
@@ -128,10 +141,10 @@ export function CategoryPlayerTabs({
         ) : null}
         {showScores && answer ? (
           <span
-            className="ms-2 font-mono text-sm font-bold text-ka-primary"
+            className="ms-2 font-mono text-sm font-bold text-primary"
             dir="ltr"
           >
-            {faDigits(answer.score)}
+            {faDigits(Math.max(0, answer.score))} امتیاز
           </span>
         ) : null}
       </div>

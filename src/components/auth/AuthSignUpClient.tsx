@@ -1,21 +1,21 @@
 "use client";
 
 import { SignUpForm } from "@/components/auth/SignUpForm";
-import { apiPost } from "@/features/api/client";
+import { useSignupMutation } from "@/hooks/api-mutations";
 import { signupBodySchema } from "@/lib/validation/auth";
 import { fieldErrorsFromZodIssues } from "@/lib/zod-field-errors";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import { toast } from "sonner";
 
-type FieldKey = "name" | "email" | "password" | "confirmPassword";
+type FieldKey = "name" | "email" | "password";
 
 export function AuthSignUpClient() {
   const router = useRouter();
   const [fieldErrors, setFieldErrors] = React.useState<
     Partial<Record<FieldKey, string>>
   >({});
-  const [pending, setPending] = React.useState(false);
+  const signupMutation = useSignupMutation();
 
   function clearField(field: FieldKey) {
     setFieldErrors((prev) => {
@@ -29,13 +29,11 @@ export function AuthSignUpClient() {
     name: string;
     email: string;
     password: string;
-    confirmPassword: string;
   }) {
     setFieldErrors({});
     const parsed = signupBodySchema.safeParse({
       email: data.email.trim(),
       password: data.password,
-      confirmPassword: data.confirmPassword,
       name: data.name.trim(),
     });
     if (!parsed.success) {
@@ -45,9 +43,8 @@ export function AuthSignUpClient() {
       return;
     }
 
-    setPending(true);
     try {
-      await apiPost("/api/auth/signup", parsed.data);
+      await signupMutation.mutateAsync(parsed.data);
       toast.success("ثبت‌نام با موفقیت انجام شد.");
       router.push("/profile");
       router.refresh();
@@ -56,7 +53,7 @@ export function AuthSignUpClient() {
         e instanceof Error ? e.message : "ثبت‌نام ناموفق بود.";
       toast.error(msg);
     } finally {
-      setPending(false);
+      signupMutation.reset();
     }
   }
 
@@ -65,7 +62,9 @@ export function AuthSignUpClient() {
       fieldErrors={fieldErrors}
       onFieldChange={clearField}
       onSubmit={onSubmit}
-      className={pending ? "pointer-events-none opacity-70" : undefined}
+      className={
+        signupMutation.isPending ? "pointer-events-none opacity-70" : undefined
+      }
     />
   );
 }

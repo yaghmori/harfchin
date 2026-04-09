@@ -1,4 +1,5 @@
 import { HomeDashboard } from "@/components/home/HomeDashboard";
+import { getUserShopBalance } from "@/server/services/coin-shop.service";
 import * as roomService from "@/server/services/room.service";
 import { getProfileForUser } from "@/server/services/profile.service";
 import { getSessionUser } from "@/server/session";
@@ -6,7 +7,7 @@ import { getSessionUser } from "@/server/session";
 export default async function HomePage() {
   const user = await getSessionUser();
   const profile =
-    user && !user.isGuest && user.email && user.passwordHash
+    user && !user.isGuest && user.passwordHash
       ? await getProfileForUser(user.id)
       : null;
 
@@ -16,10 +17,13 @@ export default async function HomePage() {
   const greetName =
     profile?.user.name?.trim().split(/\s+/)[0] ??
     user?.name?.trim().split(/\s+/)[0] ??
-    (user?.isGuest ? "بازیکن" : "دوست");
+    (!user ? "مهمان" : user.isGuest ? "بازیکن" : "کاربر");
 
   const level = profile?.level ?? 1;
-  const coins = profile ? Math.max(100, profile.totalScore * 3) : 100;
+  const coins =
+    profile && user
+      ? await getUserShopBalance(user.id, profile.totalScore)
+      : 100;
 
   return (
     <HomeDashboard

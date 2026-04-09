@@ -29,10 +29,29 @@ enum RoundStatus {
   finished
 }
 
+enum FriendshipStatus {
+  pending
+  accepted
+  blocked
+}
+
+enum RoomInviteStatus {
+  pending
+  accepted
+  declined
+  cancelled
+  expired
+}
+
+enum CoinLedgerType {
+  game_reward
+  manual_adjustment
+}
+
 model User {
   id               String            @id @default(uuid())
-  name             String?
-  email            String?           @unique
+  name             String?           @db.VarChar(64)
+  email            String?           @unique @db.VarChar(320)
   /** bcrypt hash; null for guests and OAuth-only (future). */
   passwordHash     String?
   isGuest          Boolean           @default(true)
@@ -41,13 +60,21 @@ model User {
   roomPlayers      RoomPlayer[]
   hostedRooms      Room[]            @relation("RoomHost")
   roomChatMessages RoomChatMessage[]
+  sentFriendRequests     Friendship[] @relation("FriendshipRequester")
+  receivedFriendRequests Friendship[] @relation("FriendshipAddressee")
+  sentRoomInvites        RoomInvite[] @relation("RoomInviteInviter")
+  receivedRoomInvites    RoomInvite[] @relation("RoomInviteInvitee")
+  coinWallet             UserCoinWallet?
+  coinEntries            CoinLedger[]
+
+  @@index([createdAt])
 }
 
 model Room {
   id                String       @id @default(uuid())
-  code              String       @unique
+  code              String       @unique @db.VarChar(8)
   /** Friendly name shown to players (e.g. «جمع دوستانه»). */
-  title             String       @default("")
+  title             String       @default("") @db.VarChar(64)
   /** When true, room is not listed publicly (join still works with code). */
   isPrivate         Boolean      @default(false)
   hostId            String
@@ -61,6 +88,10 @@ model Room {
   players           RoomPlayer[]
   games             Game[]
   chatMessages      RoomChatMessage[]
+  invites           RoomInvite[]
+
+  @@index([status, isPrivate, updatedAt])
+  @@index([hostId, status])
 }
 
 model RoomChatMessage {
@@ -69,10 +100,11 @@ model RoomChatMessage {
   room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
   userId    String
   user      User     @relation(fields: [userId], references: [id])
-  body      String
+  body      String   @db.VarChar(500)
   createdAt DateTime @default(now())
 
   @@index([roomId, createdAt])
+  @@index([userId, createdAt])
 }
 
 model RoomPlayer {
@@ -81,16 +113,18 @@ model RoomPlayer {
   room        Room               @relation(fields: [roomId], references: [id], onDelete: Cascade)
   userId      String
   user        User               @relation(fields: [userId], references: [id])
-  displayName String
+  displayName String             @db.VarChar(32)
   isHost      Boolean            @default(false)
   isReady     Boolean            @default(false)
   joinedAt    DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
   answers     RoundAnswer[]
   scores      PlayerScore[]
   roundReadies RoundPlayerReady[]
 
   @@unique([roomId, userId])
   @@index([roomId])
+  @@index([userId, joinedAt])
 }
 
 model Game {
@@ -103,10 +137,91 @@ model Game {
   roundTimeSec Int
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
+  coinsAwardedAt DateTime?
   rounds       Round[]
   playerScores PlayerScore[]
+  coinEntries  CoinLedger[]
 
   @@index([roomId])
+  @@index([roomId, status, createdAt])
+  @@index([status, updatedAt])
+}
+
+model Friendship {
+  id          String           @id @default(uuid())
+  requesterId String
+  requester   User             @relation("FriendshipRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  addresseeId String
+  addressee   User             @relation("FriendshipAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+  /** Canonical pair key: `${minUserId}:${maxUserId}` to prevent duplicate reverse rows. */
+  pairKey     String           @unique @db.VarChar(80)
+  status      FriendshipStatus @default(pending)
+  acceptedAt  DateTime?
+  blockedAt   DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@unique([requesterId, addresseeId])
+  @@index([addresseeId, status])
+  @@index([requesterId, status])
+  @@index([status, updatedAt])
+}
+
+model RoomInvite {
+  id         String           @id @default(uuid())
+  roomId     String
+  room       Room             @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  inviterId  String
+  inviter    User             @relation("RoomInviteInviter", fields: [inviterId], references: [id], onDelete: Cascade)
+  inviteeId  String
+  invitee    User             @relation("RoomInviteInvitee", fields: [inviteeId], references: [id], onDelete: Cascade)
+  status     RoomInviteStatus @default(pending)
+  /** Unique while invite is pending; set null once resolved/expired. */
+  pendingKey String?          @unique @db.VarChar(80)
+  respondedAt DateTime?
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  expiresAt  DateTime?
+
+  @@index([roomId, status])
+  @@index([inviteeId, status])
+  @@index([inviterId, createdAt])
+  @@index([roomId, inviteeId, createdAt])
+}
+
+model UserCoinWallet {
+  id          String       @id @default(uuid())
+  userId      String       @unique
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balance     Int          @default(0)
+  totalEarned Int          @default(0)
+  totalSpent  Int          @default(0)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  ledger      CoinLedger[]
+
+  @@index([balance])
+  @@unique([id, userId])
+}
+
+model CoinLedger {
+  id          String         @id @default(uuid())
+  walletId    String
+  wallet      UserCoinWallet @relation(fields: [walletId, userId], references: [id, userId], onDelete: Cascade)
+  userId      String
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gameId      String?
+  game        Game?          @relation(fields: [gameId], references: [id], onDelete: SetNull)
+  amount      Int
+  type        CoinLedgerType @default(game_reward)
+  description String?        @db.VarChar(255)
+  createdAt   DateTime       @default(now())
+
+  @@unique([gameId, userId, type])
+  @@index([walletId, createdAt])
+  @@index([userId, createdAt])
+  @@index([gameId])
+  @@index([type, createdAt])
 }
 
 model Round {
@@ -114,7 +229,7 @@ model Round {
   gameId      String
   game        Game               @relation(fields: [gameId], references: [id], onDelete: Cascade)
   roundNumber Int
-  letter      String
+  letter      String             @db.VarChar(4)
   status      RoundStatus        @default(active)
   startedAt   DateTime           @default(now())
   endedAt     DateTime?
@@ -123,6 +238,7 @@ model Round {
 
   @@unique([gameId, roundNumber])
   @@index([gameId])
+  @@index([gameId, status, roundNumber])
 }
 
 /** Marks that a player tapped «done» for this round (all categories filled). */
@@ -140,8 +256,8 @@ model RoundPlayerReady {
 
 model Category {
   id                String        @id @default(uuid())
-  key               String        @unique
-  title             String
+  key               String        @unique @db.VarChar(64)
+  title             String        @db.VarChar(64)
   sortOrder         Int
   isActive          Boolean       @default(true)
   /** Only one player has a valid answer in this category → bonus. */
@@ -151,6 +267,8 @@ model Category {
   /** Same normalized answer as at least one other valid submission. */
   pointsDuplicate   Int           @default(8)
   answers           RoundAnswer[]
+
+  @@index([isActive, sortOrder])
 }
 
 model RoundAnswer {
@@ -161,14 +279,16 @@ model RoundAnswer {
   roomPlayer      RoomPlayer @relation(fields: [roomPlayerId], references: [id])
   categoryId      String
   category        Category   @relation(fields: [categoryId], references: [id])
-  value           String
-  normalizedValue String
+  value           String     @db.VarChar(120)
+  normalizedValue String     @db.VarChar(120)
   isValid         Boolean
   score           Int        @default(0)
   submittedAt     DateTime   @default(now())
 
   @@unique([roundId, roomPlayerId, categoryId])
   @@index([roundId])
+  @@index([roomPlayerId, roundId])
+  @@index([categoryId, roundId])
 }
 
 model PlayerScore {
@@ -181,4 +301,27 @@ model PlayerScore {
 
   @@unique([gameId, roomPlayerId])
   @@index([gameId])
+  @@index([roomPlayerId])
+}
+
+/** Purchasable coin bundles shown in the coin shop (pricing in Iranian Toman for display / checkout). */
+model CoinPackage {
+  id            String   @id @default(uuid())
+  /** Stable key for seeds and admin APIs (e.g. base, bronze, silver, gold). */
+  slug          String   @unique @db.VarChar(64)
+  title         String   @db.VarChar(128)
+  description   String   @db.VarChar(255)
+  coinAmount    Int
+  bonusAmount   Int      @default(0)
+  priceTomans   Int
+  currencyLabel String   @default("تومان") @db.VarChar(32)
+  imageUrl      String   @db.VarChar(512)
+  badgeText     String?  @db.VarChar(64)
+  isFeatured    Boolean  @default(false)
+  sortOrder     Int      @default(0)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([isActive, sortOrder])
 }

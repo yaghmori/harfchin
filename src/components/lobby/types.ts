@@ -12,12 +12,15 @@ export type RoomState = {
   isPrivate: boolean;
   status: string;
   hostId: string;
+  /** Designated host has an active seat in this room (same as players.some(p => p.userId === hostId)). */
+  hostPresentInLobby: boolean;
   maxPlayers: number;
   draftTotalRounds: number;
   draftRoundTimeSec: number;
   activeGameId: string | null;
   lastFinishedGameId: string | null;
   players: Player[];
+  canInvite: boolean;
   minPlayersToStart: number;
   meUserId: string;
 };
