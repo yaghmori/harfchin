@@ -1,10 +1,18 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+
 import { ImageResponse } from "next/og";
+
+export const runtime = "nodejs";
 
 export const size = { width: 32, height: 32 };
 export const contentType = "image/png";
 
-export default function Icon() {
-  const logoUrl = new URL("../../public/logo.png", import.meta.url).toString();
+export default async function Icon() {
+  const logoBuffer = await readFile(
+    join(process.cwd(), "public", "logo.png"),
+  );
+  const logoSrc = `data:image/png;base64,${logoBuffer.toString("base64")}`;
 
   return new ImageResponse(
     (
@@ -19,7 +27,7 @@ export default function Icon() {
         }}
       >
         <img
-          src={logoUrl}
+          src={logoSrc}
           alt="حرف چی"
           style={{
             width: "100%",
