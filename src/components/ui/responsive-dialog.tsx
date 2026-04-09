@@ -29,7 +29,7 @@ import { cn } from "@/lib/utils";
 type ResponsiveDialogContextType = {
   isDesktop: boolean;
   isOpen: boolean;
-  onOpenChange: React.Dispatch<React.SetStateAction<boolean>>;
+  onOpenChange: (open: boolean) => void;
   size?: "sm" | "md" | "lg" | "xl" | "2xl" | "3xl" | "full";
   canClose?: boolean;
   allowOutsideClick?: boolean;
@@ -69,7 +69,7 @@ interface ResponsiveDialogProps {
   trigger?: React.ReactNode;
   children: React.ReactNode;
   open: boolean;
-  onOpenChange: React.Dispatch<React.SetStateAction<boolean>>;
+  onOpenChange: (open: boolean) => void;
   size?: "sm" | "md" | "lg" | "xl" | "2xl" | "3xl" | "full";
   className?: string;
   canClose?: boolean;

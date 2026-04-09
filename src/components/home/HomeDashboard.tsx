@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import type { DirectoryRoom } from "@/lib/room-directory";
 import { cn } from "@/lib/utils";
-import { Medal, Plus, Rocket, Trophy } from "lucide-react";
+import { Medal, Plus, Trophy } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -117,12 +117,12 @@ export function HomeDashboard({
           href="/rooms"
           className="relative overflow-hidden rounded-3xl bg-linear-to-l from-primary to-primary/80 p-5 text-white shadow-[0_12px_32px_rgba(99,14,212,0.35)] transition-[transform,filter] hover:brightness-[1.03] active:scale-[0.99]"
         >
-          <Badge className="absolute inset-e-3 top-3 border-0 bg-white/20 text-xs font-bold text-white backdrop-blur-sm hover:bg-white/25">
+          <Badge className="absolute inset-e-5 top-5 border-0 bg-yellow-500 text-xs font-bold text-yellow-900">
             امتیاز ۲ برابر
           </Badge>
           <div className="flex items-center gap-4">
             <span
-              className="grid size-14 shrink-0 place-items-center text-3xl"
+              className="grid size-14 shrink-0 place-items-center text-5xl"
               aria-hidden
             >
               🚀
@@ -134,10 +134,6 @@ export function HomeDashboard({
               </p>
             </div>
           </div>
-          <Rocket
-            className="pointer-events-none absolute -bottom-2 -inset-s-6 size-24 rotate-12 text-white/10"
-            aria-hidden
-          />
         </Link>
 
         <section>
