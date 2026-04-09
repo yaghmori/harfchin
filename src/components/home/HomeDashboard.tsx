@@ -59,7 +59,7 @@ export function HomeDashboard({
           width={1024}
           height={1024}
           priority
-          className="h-auto max-h-[400px] w-full object-cover"
+          className="h-auto max-h-[400px] sm:max-h-full w-full object-cover"
         />
       </section>
       <div className="flex flex-1 flex-col gap-6">
